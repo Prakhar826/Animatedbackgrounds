@@ -607,7 +607,7 @@ margin-bottom:0.75rem;
 
 #carbonads .carbon-img img {
   display: block;
-  width: 100px;
+  width: auto;
   border-radius: 8px;
 }
 
