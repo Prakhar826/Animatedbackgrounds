@@ -28,15 +28,15 @@
   color: #827C8C;
   font-size: 13px;
   line-height: 24px;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
   transition: opacity 900ms 100ms cubic-bezier(0.2, 0, 0, 1), transform 900ms 100ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .Subscribe form {
   z-index: 2;
-  left: 20px;
+  left: 28px;
   width: auto;
-  margin-right:20px; 
+  margin-right:28px; 
   height: 35px;
   bottom: 25px;
   overflow: hidden;
@@ -73,7 +73,7 @@
   padding: 0;
   cursor: pointer;
   outline: none;
-  width: 90px;
+  width: 95px;
   border: none;
   height: 100%;
   color: white;
