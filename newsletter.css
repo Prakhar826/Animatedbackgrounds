@@ -50,7 +50,7 @@
 .Subscribe form::after {
   top: 0;
   content: "";
-  width: 20px;
+  width: 13px;
   height: 100%;
   right: 110px;
   position: absolute;
