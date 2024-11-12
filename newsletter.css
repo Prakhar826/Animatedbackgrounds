@@ -18,8 +18,8 @@
 
 
 .Subscribe h3 {
-  color: Black;
-  font-size: 17px;
+  color: Blue;
+  font-size: 12px;
   margin-bottom: 15px;
   transition: opacity 900ms 150ms cubic-bezier(0.2, 0, 0, 1), transform 900ms 150ms cubic-bezier(0.2, 0, 0, 1);
 }
