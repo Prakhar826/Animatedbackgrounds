@@ -9,10 +9,34 @@
 	<!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-QYRH5XJN84"></script>
 <script> 
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); 
-  gtag('config', 'G-QYRH5XJN84');
+  
+const s = document.querySelector('.Subscribe')
+const b = document.querySelector('button')
+b.addEventListener('click', (e) => {
+  e.preventDefault()
+  s.classList.toggle('Subscribe--loading')
+  setTimeout(() => {
+     s.classList.remove('Subscribe--loading')
+     s.classList.toggle('Subscribe--complete')
+  }, 2000)
+  
+  setTimeout(() => {
+     s.classList.remove('Subscribe--complete')
+  }, 5000)
+})
+
+class Subscribe extends React.Component {
+  render() {
+    return (
+      <div>Subscribe</div>
+    )
+  }
+}
+
+// ReactDOM.render(
+//   <Subscribe />,
+//   document.getElementById('subscribe')
+// )
 </script>  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css"> 
   <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css'> 
