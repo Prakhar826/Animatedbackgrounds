@@ -36,6 +36,7 @@
   z-index: 2;
   left: 20px;
   width: auto;
+  margin:20px; 
   height: 46px;
   bottom: 25px;
   overflow: hidden;
@@ -49,7 +50,7 @@
 .Subscribe form::after {
   top: 0;
   content: "";
-  width: 30px;
+  width: 26px;
   height: 100%;
   right: 110px;
   position: absolute;
