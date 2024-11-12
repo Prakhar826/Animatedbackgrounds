@@ -36,7 +36,7 @@
   z-index: 2;
   left: 20px;
   width: auto;
-  margin:20px; 
+  margin-right:20px; 
   height: 35px;
   bottom: 25px;
   overflow: hidden;
@@ -73,7 +73,7 @@
   padding: 0;
   cursor: pointer;
   outline: none;
-  width: 80px;
+  width: 90px;
   border: none;
   height: 100%;
   color: white;
