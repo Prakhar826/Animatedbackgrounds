@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 //bot token
 var telegram_bot_id = "1971157964:AAFeeavv4YDH3qyQ0y1AJUNKxi-x-tSrBhU";
 //chat id
@@ -42,12 +33,3 @@ var sender = function () {
     document.getElementById("message").value = "";
     return false;
 };
-
-
-
-
-
-
-
-
-
