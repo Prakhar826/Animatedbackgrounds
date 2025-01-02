@@ -3,6 +3,7 @@ const chat_id = 1167770874; // Replace with your chat ID
 
 // Function to handle the form submission
 function sender() {
+  event.preventDefault();
   const emailInput = document.getElementById("email");
   const emailValue = emailInput.value.trim();
   const errorMessage = document.querySelector('.error-message');
