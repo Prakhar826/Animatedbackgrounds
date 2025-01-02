@@ -31,3 +31,10 @@ var sender = function () {
     document.getElementById("message").value = "";
     return false;
 };
+
+var form=document.getElementById("formId");
+function submitForm(event){
+
+   //Preventing page refresh
+   event.preventDefault();
+}
