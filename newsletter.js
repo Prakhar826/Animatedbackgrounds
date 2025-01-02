@@ -4,10 +4,8 @@ var telegram_bot_id = "1971157964:AAFeeavv4YDH3qyQ0y1AJUNKxi-x-tSrBhU";
 var chat_id = 1167770874;
 var u_name, email, message;
 var ready = function () {
-    u_name = document.getElementById("name").value;
     email = document.getElementById("email").value;
-    message = document.getElementById("message").value;
-    message = "Name: " + u_name + "\nEmail: " + email + "\nMessage: " + message;
+    message = "Email: " + email;
 };
 var sender = function () {
     ready();
