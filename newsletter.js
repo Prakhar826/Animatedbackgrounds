@@ -9,7 +9,7 @@ var ready = function () {
 const s = document.querySelector('.Subscribe');
 
 var sender = function () {
-    event.preventdefault();
+    event.preventDefault();
     ready();
     var settings = {
         "async": true,
@@ -24,6 +24,16 @@ var sender = function () {
             "chat_id": chat_id,
             "text": message
         })
+
+         s.classList.toggle('Subscribe--loading');
+  setTimeout(() => {
+    s.classList.remove('Subscribe--loading');
+    s.classList.toggle('Subscribe--complete');
+  }, 2000);
+
+  setTimeout(() => {
+    s.classList.remove('Subscribe--complete');
+  }, 5000);
     
     };
     $.ajax(settings).done(function (response) {
