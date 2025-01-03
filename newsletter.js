@@ -9,7 +9,7 @@ var ready = function () {
 const s = document.querySelector('.Subscribe');
 
 var sender = function () {
-    
+    event.preventdefault();
     ready();
     var settings = {
         "async": true,
