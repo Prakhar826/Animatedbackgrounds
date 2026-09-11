@@ -1,22 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://sitemaps.org"
-        xmlns:xsi="http://w3.org"
-        xsi:schemaLocation="http://sitemaps.org http://sitemaps.org/sitemap.xsd">
-
-  <!-- Main Single Page Website -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://animatedbackgrounds.me</loc>
     <lastmod>2026-09-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
-
-  <!-- Blog Page -->
   <url>
-    <loc>https://animatedbackgrounds.me/blog</loc>
+    <loc>https://animatedbackgrounds.meblog</loc>
     <lastmod>2026-09-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-
 </urlset>
