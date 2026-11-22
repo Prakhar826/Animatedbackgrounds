@@ -64,6 +64,7 @@ jobs:
             --exclude='/.git/' \
             --exclude='/.github/' \
             --exclude='/.gitignore' \
+            --exclude='/assets/js/app.js' \
             "$RUNNER_TEMP/animatedbackgrounds-site/dist/" "$GITHUB_WORKSPACE/"
           git -C "$GITHUB_WORKSPACE" add -A
           if ! git -C "$GITHUB_WORKSPACE" diff --cached --quiet; then
