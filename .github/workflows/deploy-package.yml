@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -32,23 +34,51 @@ jobs:
           node-version: 24
           package-manager-cache: false
 
-      - name: Extract site package
+      - name: Extract and build the new site
+        shell: bash
         run: |
-          test -f animatedbackgrounds-deploy-ready-secure.zip || {
-            echo "Upload animatedbackgrounds-deploy-ready-secure.zip to the repository root first."
+          set -euo pipefail
+          SOURCE_ZIP="$GITHUB_WORKSPACE/.github/deploy-source/animatedbackgrounds-deploy-ready-secure.zip"
+          if [ -f "$GITHUB_WORKSPACE/animatedbackgrounds-deploy-ready-secure.zip" ]; then
+            mkdir -p "$GITHUB_WORKSPACE/.github/deploy-source"
+            cp "$GITHUB_WORKSPACE/animatedbackgrounds-deploy-ready-secure.zip" "$SOURCE_ZIP"
+          fi
+          test -f "$SOURCE_ZIP" || {
+            echo "Deployment archive not found in .github/deploy-source/."
             exit 1
           }
           mkdir -p "$RUNNER_TEMP/animatedbackgrounds-site"
-          unzip -q "$GITHUB_WORKSPACE/animatedbackgrounds-deploy-ready-secure.zip" -d "$RUNNER_TEMP/animatedbackgrounds-site"
-
-      - name: Build static site
-        working-directory: ${{ runner.temp }}/animatedbackgrounds-site
-        run: node scripts/build.mjs
+          unzip -q "$SOURCE_ZIP" -d "$RUNNER_TEMP/animatedbackgrounds-site"
+          cd "$RUNNER_TEMP/animatedbackgrounds-site"
+          node scripts/build.mjs
+          test -f dist/index.html
+          test -f dist/CNAME
+          test -f dist/ads.txt
+          test -f dist/sitemap.xml
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: ${{ runner.temp }}/animatedbackgrounds-site/dist
+
+      - name: Replace old repository files with the new project source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -a --delete \
+            --exclude='/.git/' \
+            --exclude='/.github/' \
+            --exclude='/dist/' \
+            "$RUNNER_TEMP/animatedbackgrounds-site/" "$GITHUB_WORKSPACE/"
+          git -C "$GITHUB_WORKSPACE" add -A
+          if ! git -C "$GITHUB_WORKSPACE" diff --cached --quiet; then
+            git -C "$GITHUB_WORKSPACE" config user.name "github-actions[bot]"
+            git -C "$GITHUB_WORKSPACE" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$GITHUB_WORKSPACE" commit -m "chore: replace legacy site files with new project source"
+            git -C "$GITHUB_WORKSPACE" push origin HEAD:main
+          else
+            echo "Repository already matches the new project source."
+          fi
 
   deploy:
     needs: build
