@@ -118,7 +118,11 @@
 
   /* ---------------- URLs & screenshots ---------------- */
   const hasShot = id => S.shots === null || S.shots.has(id);
-  const thumb = b => S.shots && !S.shots.has(b.id) ? '' : `/assets/shots/${b.id}.jpg`;
+  const thumb = b => {
+    const custom = typeof b.screenshotUrl === 'string' ? b.screenshotUrl.trim() : '';
+    if (custom && (/^https:\/\//i.test(custom) || custom.startsWith('/assets/shots/'))) return custom;
+    return S.shots && !S.shots.has(b.id) ? '' : `/assets/shots/${b.id}.jpg`;
+  };
   const penUrl = b => `https://codepen.io/${b.user}/pen/${b.id}`;
   const fullUrl = b => `https://codepen.io/${b.user}/full/${b.id}`;
   const embedUrl = b => `https://codepen.io/${b.user}/embed/${b.id}?default-tab=result&theme-id=dark&editable=false`;
@@ -1636,7 +1640,10 @@
         return 'Published globally via Worker — site rebuild triggered for everybody.';
       }
       const gh = getGh();
-      if (!gh.repo || !gh.token) return null;
+      if (!gh.repo || !gh.token) {
+        if (action === 'screenshot') throw new Error('Connect Global Sync first. Screenshot changes must be saved to GitHub to appear for everyone.');
+        return null;
+      }
       const branch = gh.branch || 'main';
       const url = `https://api.github.com/repos/${gh.repo}/contents/data/backgrounds.json`;
       const headers = { authorization: `Bearer ${gh.token}`, accept: 'application/vnd.github+json', 'content-type': 'application/json' };
@@ -1645,6 +1652,26 @@
       const file = await gr.json();
       const lib = JSON.parse(b64dec(file.content));
       let msg = '';
+      if (action === 'screenshot' && payload.imageBase64) {
+        const assetPath = `assets/shots/${payload.id}-custom.jpg`;
+        const assetUrl = `https://api.github.com/repos/${gh.repo}/contents/${assetPath}`;
+        const existing = await fetch(`${assetUrl}?ref=${encodeURIComponent(branch)}`, { headers });
+        if (!existing.ok && existing.status !== 404) throw new Error(`Could not check screenshot file (${existing.status})`);
+        const assetBody = {
+          message: `Update screenshot for background ${payload.id}`,
+          content: payload.imageBase64,
+          branch
+        };
+        if (existing.ok) assetBody.sha = (await existing.json()).sha;
+        const assetPut = await fetch(assetUrl, {
+          method: 'PUT', headers, body: JSON.stringify(assetBody)
+        });
+        if (!assetPut.ok) {
+          const detail = await assetPut.text();
+          throw new Error(`Screenshot upload failed (${assetPut.status}): ${detail.slice(0, 140)}`);
+        }
+        payload.url = `/${assetPath}`;
+      }
       if (action === 'remove') {
         const b = lib.backgrounds.find(x => x.id === payload.id);
         if (!b) throw new Error('Background ID not found in repo data/backgrounds.json');
@@ -1655,6 +1682,18 @@
         if (!b) throw new Error('Background ID not found in repo data/backgrounds.json');
         delete b.hidden;
         msg = `Restore background ${payload.id} for all visitors`;
+      } else if (action === 'screenshot') {
+        const b = lib.backgrounds.find(x => x.id === payload.id);
+        if (!b) throw new Error('Background ID not found in repo data/backgrounds.json');
+        if (payload.clear) delete b.screenshotUrl;
+        else {
+          const target = String(payload.url || '').trim();
+          if (!(/^https:\/\//i.test(target) || /^\/assets\/shots\/[A-Za-z0-9_-]+\.jpg$/i.test(target))) {
+            throw new Error('Screenshot must be an HTTPS image URL or an uploaded JPG asset.');
+          }
+          b.screenshotUrl = target;
+        }
+        msg = payload.clear ? `Reset screenshot for background ${payload.id}` : `Change screenshot for background ${payload.id}`;
       } else if (action === 'add') {
         const ex = lib.backgrounds.find(x => x.id === payload.id);
         if (ex) {
@@ -1682,11 +1721,12 @@
     const openSyncDialog = () => {
       const gh = getGh();
       openDialog(`<h2><i class="fa-brands fa-github"></i> Global Live Sync (for Everybody)</h2>
-        <p class="muted">Connect your GitHub repository once so adding or removing a background on <code>/requests/</code> commits directly to <code>data/backgrounds.json</code> and updates the live site for all visitors. Saved only in this browser.</p>
+        <p class="muted">This connects the public <code>/requests/</code> page to GitHub so changes publish for everyone. ChatGPT's connected GitHub account is separate and cannot be used by this public website.</p>
+        <p class="muted" style="font-size:12px">Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-Grained Personal Access Token</a>: choose owner <b>Prakhar826</b>, select only <b>Animatedbackgrounds</b>, and grant <b>Contents: Read and write</b>. Save the token privately. It is stored in this browser's local storage; do not use this on a shared computer.</p>
         <form id="gh-sync-form">
-          <div class="field"><label for="gh-repo">GitHub Repository *</label><input id="gh-repo" required value="${esc(gh.repo)}" placeholder="username/animatedbackgrounds"></div>
+          <div class="field"><label for="gh-repo">GitHub Repository *</label><input id="gh-repo" required value="${esc(gh.repo || 'Prakhar826/Animatedbackgrounds')}" placeholder="Prakhar826/Animatedbackgrounds"></div>
           <div class="field"><label for="gh-branch">Branch</label><input id="gh-branch" value="${esc(gh.branch || 'main')}" placeholder="main"></div>
-          <div class="field"><label for="gh-token">Fine-Grained PAT (Contents: Read &amp; Write) *</label><input id="gh-token" type="password" required value="${esc(gh.token)}" placeholder="github_pat_…"></div>
+          <div class="field"><label for="gh-token">Fine-Grained PAT (Contents: Read &amp; Write) *</label><input id="gh-token" type="password" required value="${esc(gh.token)}" placeholder="github_pat_…" autocomplete="off"></div>
           <div class="dialog-actions">
             ${gh.token ? '<button type="button" class="btn btn-danger btn-sm" id="gh-clear">Disconnect</button>' : ''}
             <button type="button" class="btn btn-ghost" data-close>Cancel</button>
@@ -1701,6 +1741,128 @@
         closeDialog(); paint(); say('Global GitHub Sync connected — add & remove actions now publish for everybody!');
       };
     };
+
+    async function imageFileToJpegBase64(file) {
+      if (!file || !/^image\/(?:jpeg|png|webp|gif|avif)$/i.test(file.type)) {
+        throw new Error('Choose a JPG, PNG, WebP, GIF or AVIF image.');
+      }
+      if (file.size > 15 * 1024 * 1024) throw new Error('Please choose an image smaller than 15 MB.');
+      if (typeof createImageBitmap !== 'function') throw new Error('This browser cannot process the selected image. Try a newer browser.');
+      const bitmap = await createImageBitmap(file);
+      try {
+        const scale = Math.min(1, 1600 / bitmap.width, 900 / bitmap.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Could not process this image.');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL('image/jpeg', 0.88);
+        const base64 = data.slice(data.indexOf(',') + 1);
+        if (base64.length > 4_500_000) throw new Error('The compressed image is still too large. Try a smaller image.');
+        return base64;
+      } finally {
+        bitmap.close();
+      }
+    }
+
+    function imageLoads(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => reject(new Error('The image URL could not be loaded. Check that it is public and allows direct image viewing.'));
+        img.src = url;
+      });
+    }
+
+    function openScreenshotDialog(id) {
+      const b = S.byId.get(id);
+      if (!b) return;
+      const current = thumb(b);
+      openDialog(`<h2><i class="fa-regular fa-image"></i> Change screenshot</h2>
+        <p class="muted">Replace the preview image for <b>${esc(b.name)}</b> (<code>${esc(id)}</code>). You can upload an image or paste a public HTTPS image URL.</p>
+        ${current ? `<img id="shot-editor-preview" src="${esc(current)}" alt="Current screenshot" style="display:block;width:100%;max-height:220px;object-fit:contain;background:var(--surface-2);border-radius:10px;margin:0 0 14px">` : '<div id="shot-editor-preview" class="shot-fallback" style="width:100%;height:150px;margin-bottom:14px"></div>'}
+        <form id="shot-editor-form">
+          <div class="field"><label for="shot-editor-file">Upload screenshot</label><input id="shot-editor-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></div>
+          <div class="field"><label for="shot-editor-url">Or image URL</label><input id="shot-editor-url" type="url" inputmode="url" placeholder="https://example.com/screenshot.jpg" value="${/^https:\/\//i.test(b.screenshotUrl || '') ? esc(b.screenshotUrl) : ''}"></div>
+          <p class="muted" style="font-size:12px">Uploads are resized to a maximum of 1600 × 900 and saved as optimized JPG. Images are uploaded to this repository; URL-based screenshots keep their original public URL.</p>
+          <div class="dialog-actions">
+            <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+            <button type="button" class="btn btn-ghost" id="shot-editor-reset">Reset to original</button>
+            <button type="submit" class="btn btn-primary" id="shot-editor-save"><i class="fa-solid fa-cloud-arrow-up"></i> Save screenshot</button>
+          </div>
+        </form>`);
+      const fileInput = $('#shot-editor-file');
+      const urlInput = $('#shot-editor-url');
+      const preview = $('#shot-editor-preview');
+      const showPreview = src => {
+        if (!preview) return;
+        if (preview.tagName === 'IMG') preview.src = src;
+        else {
+          const img = document.createElement('img');
+          img.id = 'shot-editor-preview';
+          img.alt = 'Screenshot preview';
+          img.style.cssText = 'display:block;width:100%;max-height:220px;object-fit:contain;background:var(--surface-2);border-radius:10px;margin:0 0 14px';
+          img.src = src;
+          preview.replaceWith(img);
+        }
+      };
+      fileInput.onchange = () => {
+        const f = fileInput.files && fileInput.files[0];
+        urlInput.value = '';
+        if (f) showPreview(URL.createObjectURL(f));
+      };
+      urlInput.oninput = () => {
+        if (urlInput.value.trim()) {
+          fileInput.value = '';
+          showPreview(urlInput.value.trim());
+        }
+      };
+      $('#shot-editor-reset').onclick = async () => {
+        const btn = $('#shot-editor-reset');
+        btn.disabled = true;
+        try {
+          await publishGlobal('screenshot', { id, clear: true });
+          delete b.screenshotUrl;
+          closeDialog();
+          paint();
+          say(`Reset screenshot for ${id}. The original local screenshot will be used.`);
+        } catch (err) {
+          btn.disabled = false;
+          say(err.message, true);
+        }
+      };
+      $('#shot-editor-form').onsubmit = async e => {
+        e.preventDefault();
+        const save = $('#shot-editor-save');
+        const file = fileInput.files && fileInput.files[0];
+        const url = urlInput.value.trim();
+        save.disabled = true;
+        try {
+          let payload;
+          if (file) {
+            payload = { id, imageBase64: await imageFileToJpegBase64(file) };
+          } else if (url) {
+            if (!/^https:\/\//i.test(url)) throw new Error('Use a public HTTPS image URL.');
+            await imageLoads(url);
+            payload = { id, url };
+          } else {
+            throw new Error('Choose an image file or paste an image URL.');
+          }
+          await publishGlobal('screenshot', payload);
+          b.screenshotUrl = payload.url || `/assets/shots/${id}-custom.jpg`;
+          if (S.shots) S.shots.add(id);
+          closeDialog();
+          paint();
+          say(`Screenshot updated for ${id}. GitHub Pages will publish the change automatically.`);
+        } catch (err) {
+          save.disabled = false;
+          say(err.message, true);
+        }
+      };
+    }
 
     const rowsHTML = list => list.map(rq => {
       const b = S.byId.get(rq.id);
@@ -1739,6 +1901,7 @@
         </div>
         <div class="req-actions">
           <a class="btn btn-ghost btn-sm" href="/background/${esc(b.id)}/" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square"></i> Preview</a>
+          <button type="button" class="btn btn-soft btn-sm" data-edit-shot="${esc(b.id)}"><i class="fa-regular fa-image"></i> Screenshot</button>
           ${isRem
             ? `<button class="btn btn-soft btn-sm" data-restore-bg="${esc(b.id)}"><i class="fa-solid fa-rotate-left"></i> Restore</button>`
             : `<button class="btn btn-danger btn-sm" data-remove-bg="${esc(b.id)}"><i class="fa-solid fa-trash"></i> Remove</button>`}
@@ -1842,6 +2005,9 @@
       $('#admin-out').onclick = () => { session.del('admin-token'); session.del('admin-pass'); open = false; login(); };
       const syncBtn = $('#admin-sync-btn');
       if (syncBtn) syncBtn.onclick = openSyncDialog;
+      $('[data-edit-shot]').forEach(btn => {
+        btn.onclick = () => openScreenshotDialog(btn.dataset.editShot);
+      });
 
       $$('[data-admin-tab]').forEach(btn => {
         btn.onclick = () => { tab = btn.dataset.adminTab; bgLimit = 40; paint(); };
@@ -2079,6 +2245,19 @@
 
   /* ---------------- boot ---------------- */
   initChrome();
+  const detailMatch = location.pathname.match(/^\\/background\\/([A-Za-z0-9]{4,12})\\/?$/);
+  if (detailMatch) {
+    fetch('/data/backgrounds.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(data => {
+      const item = data && Array.isArray(data.backgrounds) ? data.backgrounds.find(x => x.id === detailMatch[1]) : null;
+      const custom = item && typeof item.screenshotUrl === 'string' ? item.screenshotUrl.trim() : '';
+      if (!custom || !(/^https:\\/\\//i.test(custom) || custom.startsWith('/assets/shots/'))) return;
+      document.querySelectorAll('img').forEach(img => {
+        if (img.getAttribute('src') === `/assets/shots/${detailMatch[1]}.jpg`) img.src = custom;
+      });
+      const og = document.querySelector('meta[property="og:image"]');
+      if (og) og.content = /^https:\\/\\//i.test(custom) ? custom : location.origin + custom;
+    }).catch(() => {});
+  }
   initNewsletterSink();
   if (isSubscribed()) $$('[data-newsletter]').forEach(f => f.remove());
   const route = document.body.dataset.route;
