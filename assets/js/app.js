@@ -2245,17 +2245,17 @@
 
   /* ---------------- boot ---------------- */
   initChrome();
-  const detailMatch = location.pathname.match(/^\\/background\\/([A-Za-z0-9]{4,12})\\/?$/);
+  const detailMatch = location.pathname.match(/^\/background\/([A-Za-z0-9]{4,12})\/?$/);
   if (detailMatch) {
     fetch('/data/backgrounds.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(data => {
       const item = data && Array.isArray(data.backgrounds) ? data.backgrounds.find(x => x.id === detailMatch[1]) : null;
       const custom = item && typeof item.screenshotUrl === 'string' ? item.screenshotUrl.trim() : '';
-      if (!custom || !(/^https:\\/\\//i.test(custom) || custom.startsWith('/assets/shots/'))) return;
+      if (!custom || !(/^https:\/\//i.test(custom) || custom.startsWith('/assets/shots/'))) return;
       document.querySelectorAll('img').forEach(img => {
         if (img.getAttribute('src') === `/assets/shots/${detailMatch[1]}.jpg`) img.src = custom;
       });
       const og = document.querySelector('meta[property="og:image"]');
-      if (og) og.content = /^https:\\/\\//i.test(custom) ? custom : location.origin + custom;
+      if (og) og.content = /^https:\/\//i.test(custom) ? custom : location.origin + custom;
     }).catch(() => {});
   }
   initNewsletterSink();
