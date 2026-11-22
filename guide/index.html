@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>How to Use an Animated Background in Your Website or App · Animated Backgrounds</title>
+  <!-- The blog lives on its own subdomain now: any /blog/* URL is redirected before paint -->
+  <script>if(/^\/blog(\/|\.html|$)/i.test(location.pathname))location.replace('https://blog.animatedbackgrounds.me/')</script>
+  <meta name="description" content="Step-by-step guide to adding a CSS, Canvas or WebGL animated background to HTML, React, Next.js, Vue, WordPress, Webflow and mobile apps — with performance and accessibility tips.">
+  <meta name="keywords" content="animated backgrounds, animation backgrounds, motion backgrounds, moving backgrounds, gif backgrounds, animated backgrounds css, backgrounds css, css animations, html css backgrounds, html backgrounds, background animation, background effects, animation effects, animated wallpaper, animated backgrounds live">
+  <meta name="author" content="Prakhar Tripathi">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="theme-color" content="#0f0f10">
+  <link rel="canonical" href="https://animatedbackgrounds.me/guide/">
+  
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Animated Backgrounds">
+  <meta property="og:title" content="How to Use an Animated Background in Your Website or App · Animated Backgrounds">
+  <meta property="og:description" content="Step-by-step guide to adding a CSS, Canvas or WebGL animated background to HTML, React, Next.js, Vue, WordPress, Webflow and mobile apps — with performance and accessibility tips.">
+  <meta property="og:url" content="https://animatedbackgrounds.me/guide/">
+  <meta property="og:image" content="https://animatedbackgrounds.me/assets/icons/android-chrome-512x512.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="p:domain_verify" content="85bba5f5d14833ea390d327e074c2181">
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Animated BG">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16x16.png">
+
+  <!-- Theme before paint (OriginKit dark by default, no flash) -->
+  <script>try{var t=localStorage.getItem('ab:theme');t=t?JSON.parse(t):'dark';var isDark=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',isDark);var d=localStorage.getItem('ab:density');if(d&&JSON.parse(d)==='compact')document.documentElement.classList.add('compact')}catch(e){}</script>
+  <script>window.AB_CONFIG={"site":"https://animatedbackgrounds.me","blog":"https://blog.animatedbackgrounds.me/","apiBase":"","newsletter":{"action":"https://blog.animatedbackgrounds.me/_ob/subscribe","formKey":"home-newsletter","rssFallback":"https://r.jina.ai/https://blog.animatedbackgrounds.me/rss.xml"},"carbon":{"serve":"CESI523J","placement":"animatedbackgroundsme","format":""},"contactEmail":"owner@animatedbackgrounds.me","adminHash":""}</script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/site.css?v=b101861115">
+  <link rel="stylesheet" href="/assets/css/app.css?v=b101861115">
+
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-QYRH5XJN84"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-QYRH5XJN84');</script>
+  <!-- Google AdSense (auto ads) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7495618193422190" crossorigin="anonymous"></script>
+
+  <link rel="alternate" type="application/rss+xml" title="Animated Backgrounds Blog" href="https://blog.animatedbackgrounds.me/rss.xml">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"How to Use an Animated Background in Your Website or App","description":"Step-by-step guide to adding a CSS, Canvas or WebGL animated background to HTML, React, Next.js, Vue, WordPress, Webflow and mobile apps — with performance and accessibility tips.","url":"https://animatedbackgrounds.me/guide/","totalTime":"PT10M","tool":[{"@type":"HowToTool","name":"Code editor"}],"step":[{"@type":"HowToStep","position":1,"name":"Pick a background and get the code","url":"https://animatedbackgrounds.me/guide/#pick"},{"@type":"HowToStep","position":2,"name":"Add it as a full-screen layer behind your content","url":"https://animatedbackgrounds.me/guide/#layer"},{"@type":"HowToStep","position":3,"name":"Quick option: embed it with an iframe","url":"https://animatedbackgrounds.me/guide/#iframe"},{"@type":"HowToStep","position":4,"name":"CSS-only backgrounds (gradients)","url":"https://animatedbackgrounds.me/guide/#css-only"},{"@type":"HowToStep","position":5,"name":"Canvas and WebGL backgrounds","url":"https://animatedbackgrounds.me/guide/#canvas"},{"@type":"HowToStep","position":6,"name":"React and Next.js","url":"https://animatedbackgrounds.me/guide/#react"},{"@type":"HowToStep","position":7,"name":"Vue and Nuxt","url":"https://animatedbackgrounds.me/guide/#vue"},{"@type":"HowToStep","position":8,"name":"WordPress, Webflow, Wix, Shopify and Framer","url":"https://animatedbackgrounds.me/guide/#builders"},{"@type":"HowToStep","position":9,"name":"Mobile and desktop apps","url":"https://animatedbackgrounds.me/guide/#apps"},{"@type":"HowToStep","position":10,"name":"Keep text readable on top","url":"https://animatedbackgrounds.me/guide/#readable"},{"@type":"HowToStep","position":11,"name":"Performance and accessibility checklist","url":"https://animatedbackgrounds.me/guide/#performance"},{"@type":"HowToStep","position":12,"name":"Credit the author","url":"https://animatedbackgrounds.me/guide/#license"}]}</script><script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Are the animated backgrounds free to use?","acceptedAnswer":{"@type":"Answer","text":"They are free to browse and preview. Each background belongs to its CodePen author, and most pens are MIT-licensed, which allows commercial use with the license notice. Always check the pen before using it."}},{"@type":"Question","name":"Will an animated background slow down my website?","acceptedAnswer":{"@type":"Answer","text":"CSS-only backgrounds are very light. Canvas and WebGL backgrounds use the GPU, so cap the pixel ratio, pause them when hidden or off screen, and test with Lighthouse."}},{"@type":"Question","name":"Can I use these backgrounds in WordPress without coding?","acceptedAnswer":{"@type":"Answer","text":"Yes. Paste the HTML in a Custom HTML block, the CSS in Additional CSS and the JavaScript in a footer-code plugin. CSS-only gradients from the creator only need the CSS."}},{"@type":"Question","name":"How do I put text on top of an animated background?","acceptedAnswer":{"@type":"Answer","text":"Place the background in a fixed or absolute layer with z-index: -1 and pointer-events: none, then add a semi-transparent scrim so the text keeps enough contrast."}},{"@type":"Question","name":"Can I use an animated background in a mobile app?","acceptedAnswer":{"@type":"Answer","text":"Use a WebView in React Native or Flutter for the live version, or export a short looping video or Lottie file for native apps."}}]}</script><script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://animatedbackgrounds.me/"},{"@type":"ListItem","position":2,"name":"Guide"}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Animated Backgrounds","url":"https://animatedbackgrounds.me/","potentialAction":{"@type":"SearchAction","target":"https://animatedbackgrounds.me/search/?q={query}","query-input":"required name=query"}}</script>
+</head>
+<body data-route="page">
+  <a class="skip-link" href="#view">Skip to content</a>
+
+  <div class="app-shell" id="app">
+    <!-- ============ TOP FLOATING HEADER (Exact OriginKit layout) ============ -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn only-mobile" id="menu-btn" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+        <a class="brand" href="/" data-link>
+          <span class="brand-logo"><img src="/assets/icons/android-chrome-192x192.png" alt="" width="34" height="34"></span>
+          <span class="brand-text"><span>Animated</span><strong>Backgrounds</strong></span>
+        </a>
+      </div>
+
+      <nav class="top-nav" id="top-nav" aria-label="Primary">
+        <a href="/all/" data-link data-nav="all">Backgrounds</a>
+        <a href="/popular/" data-link data-nav="popular">Popular</a>
+        <a href="/create/" data-link data-nav="create">Studio</a>
+        <a href="/gif/" data-link data-nav="gif">GIF Tool</a>
+        <a href="/guide/" data-nav="guide">Guide</a>
+        <span class="top-nav-dot" aria-hidden="true">·</span>
+        <a href="https://blog.animatedbackgrounds.me/" data-nav="blog">Blog</a>
+      </nav>
+
+      <div class="top-actions">
+        <button class="btn-submit-pill" id="submit-btn" title="Submit a background" aria-label="Submit a background"><i class="fa-solid fa-plus"></i><span>Submit</span></button>
+      </div>
+    </header>
+
+    <div class="app-body">
+      <!-- ============ SIDEBAR PANEL (OriginKit style) ============ -->
+      <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="side-top">
+          <div class="side-mode-switch" role="navigation" aria-label="Mode">
+            <a href="/all/" data-link data-nav="all" class="mode-tab">Browse</a>
+            <a href="/create/" data-link data-nav="create" class="mode-tab">Studio</a>
+          </div>
+
+          <form class="search" id="search-form" role="search" action="/search/">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="search-input" name="q" type="search" placeholder="Search" autocomplete="off" aria-label="Search backgrounds">
+            <kbd class="hide-xs">/</kbd>
+          </form>
+        </div>
+
+        <div class="side-scroll">
+          <div class="side-section">
+            <h4 class="side-title">Explore</h4>
+            <nav class="side-nav" id="side-nav">
+              <a href="/popular/" data-link data-nav="popular"><i class="fa-solid fa-fire ico-hot"></i><span>Trending</span></a>
+              <a href="/all/" data-link data-nav="all"><i class="fa-solid fa-layer-group ico-all"></i><span>All Backgrounds</span><em class="nav-count" id="count-all">657</em></a>
+              <a href="/random/" data-link data-nav="random"><i class="fa-solid fa-shuffle ico-rnd"></i><span>Random</span></a>
+              <a href="/favorites/" data-link data-nav="favorites"><i class="fa-solid fa-heart ico-fav"></i><span>Favorites</span><em class="nav-count" id="count-likes"></em></a>
+            </nav>
+          </div>
+
+          <div class="side-divider" aria-hidden="true"></div>
+
+          <div class="side-section">
+            <h4 class="side-title">Categories</h4>
+            <nav class="side-cats" id="side-cats"><a href="/collection/waves/" data-link><span class="dot" style="background:#2a9df4"></span>Wave Animations<em>32</em></a><a href="/collection/bubbles/" data-link><span class="dot" style="background:#4f7cff"></span>Bubbles &amp; Blobs<em>22</em></a><a href="/collection/hearts/" data-link><span class="dot" style="background:#e5484d"></span>Hearts &amp; Love<em>11</em></a><a href="/collection/particles/" data-link><span class="dot" style="background:#f5a524"></span>Particles<em>16</em></a><a href="/collection/space/" data-link><span class="dot" style="background:#6e56cf"></span>Space &amp; Stars<em>5</em></a><a href="/collection/gradient/" data-link><span class="dot" style="background:#d6409f"></span>Gradients<em>15</em></a><a href="/collection/patterns/" data-link><span class="dot" style="background:#30a46c"></span>Patterns &amp; Geometry<em>23</em></a><a href="/collection/3d/" data-link><span class="dot" style="background:#3e63dd"></span>3D Backgrounds<em>18</em></a><a href="/collection/tunnel/" data-link><span class="dot" style="background:#8e4ec6"></span>Tunnels<em>10</em></a><a href="/collection/fluid/" data-link><span class="dot" style="background:#12a594"></span>Fluid Simulation<em>26</em></a><a href="/collection/noise/" data-link><span class="dot" style="background:#8d8d8d"></span>Noise &amp; Glitch<em>16</em></a><a href="/collection/interactive/" data-link><span class="dot" style="background:#e37926"></span>Interactive<em>1</em></a></nav>
+          </div>
+
+          <div class="side-share">
+            <div class="share-row" id="side-share">
+              <a class="s-tw" target="_blank" rel="noopener" aria-label="Share on X / Twitter" href="https://twitter.com/intent/tweet?url=https%3A%2F%2Fanimatedbackgrounds.me&text=Free%20animated%20backgrounds%20for%20your%20website"><i class="fa-brands fa-x-twitter"></i></a>
+              <a class="s-fb" target="_blank" rel="noopener" aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fanimatedbackgrounds.me"><i class="fa-brands fa-facebook-f"></i></a>
+              <a class="s-tg" target="_blank" rel="noopener" aria-label="Share on Telegram" href="https://t.me/share/url?url=https%3A%2F%2Fanimatedbackgrounds.me&text=Free%20animated%20backgrounds"><i class="fa-brands fa-telegram"></i></a>
+              <a class="s-pi" target="_blank" rel="noopener" aria-label="Share on Pinterest" href="https://pinterest.com/pin/create/button/?url=https%3A%2F%2Fanimatedbackgrounds.me&description=Free%20animated%20backgrounds"><i class="fa-brands fa-pinterest-p"></i></a>
+              <a class="s-wa" target="_blank" rel="noopener" aria-label="Share on WhatsApp" href="https://wa.me/?text=Free%20animated%20backgrounds%20https%3A%2F%2Fanimatedbackgrounds.me"><i class="fa-brands fa-whatsapp"></i></a>
+            </div>
+            <p class="site-views" title="Total page views"><i class="fa-regular fa-eye"></i> <span id="site-views">–</span> site views</p>
+            <nav class="side-links" aria-label="Site"><a href="/about/">About</a><a href="/guide/">Guide</a><a href="/privacy-policy/">Privacy</a><a href="/contact/">Contact</a></nav>
+          </div>
+        </div>
+
+        <!-- Pinned bottom sidebar banner: CarbonAds (replaces OriginKit's Templens banner) -->
+        <div class="side-ad-wrap" id="ad-native" aria-label="Sponsored" hidden>
+          <aside class="ad-carbon-card">
+            <div class="ad-native-body" id="carbon-slot"></div>
+          </aside>
+        </div>
+      </aside>
+      <div class="scrim" id="scrim" hidden></div>
+
+      <!-- ============ MAIN CONTENT ============ -->
+      <div class="main">
+        <main id="view" class="view" tabindex="-1"><nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Home</a><i class="fa-solid fa-chevron-right"></i><span>Guide</span></nav>
+  <article class="guide">
+    <header class="guide-head">
+      <h1>How to Use an Animated Background in Your Website or App</h1>
+      <p class="guide-lede">Copy a background from the library into a plain HTML page, a React or Vue app, a site builder or a mobile app. Each step has code you can paste.</p>
+      <div class="guide-actions"><a class="btn btn-primary" href="/all/">Browse backgrounds</a><a class="btn btn-ghost" href="/create/">Make a CSS gradient</a></div>
+    </header>
+    <div class="guide-layout">
+      <aside class="toc" aria-label="On this page"><h4>On this page</h4><ol><li><a href="#pick">Pick a background and get the code</a></li><li><a href="#layer">Add it as a full-screen layer behind your content</a></li><li><a href="#iframe">Quick option: embed it with an iframe</a></li><li><a href="#css-only">CSS-only backgrounds (gradients)</a></li><li><a href="#canvas">Canvas and WebGL backgrounds</a></li><li><a href="#react">React and Next.js</a></li><li><a href="#vue">Vue and Nuxt</a></li><li><a href="#builders">WordPress, Webflow, Wix, Shopify and Framer</a></li><li><a href="#apps">Mobile and desktop apps</a></li><li><a href="#readable">Keep text readable on top</a></li><li><a href="#performance">Performance and accessibility checklist</a></li><li><a href="#license">Credit the author</a></li><li><a href="#faq">FAQ</a></li></ol></aside>
+      <div class="prose">
+        <section id="pick" class="guide-step"><h2><span class="step-no">1</span>Pick a background and get the code</h2>
+      <p>Browse the <a href="/all/">library of 657 backgrounds</a> or open a <a href="/collection/gradient/">collection</a>. Click a card to open the live preview, then use:</p>
+      <ul>
+        <li><b>Get Code</b> — opens the original pen on CodePen with its HTML, CSS and JavaScript.</li>
+        <li><b>Embed</b> — gives you a ready-to-paste iframe snippet.</li>
+        <li><b>Fullscreen</b> — shows how the background looks at full viewport size.</li>
+      </ul>
+      <p>Before you ship, open the pen and check its license and any external libraries it loads (Three.js, GSAP, p5.js…). Most pens are MIT-licensed, but some authors ask for credit.</p></section><section id="layer" class="guide-step"><h2><span class="step-no">2</span>Add it as a full-screen layer behind your content</h2>
+      <p>The most reliable setup is a fixed layer that fills the viewport and sits behind everything else. Paste the pen's HTML inside the layer, its CSS into your stylesheet and its JavaScript before <code>&lt;/body&gt;</code>.</p>
+      <pre class="code-block" data-lang="html"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>&lt;body&gt;
+  &lt;div class=&quot;animated-bg&quot; aria-hidden=&quot;true&quot;&gt;
+    &lt;!-- paste the pen&#39;s HTML here (canvas, svg or divs) --&gt;
+  &lt;/div&gt;
+
+  &lt;main class=&quot;content&quot;&gt;
+    &lt;h1&gt;Your page content&lt;/h1&gt;
+  &lt;/main&gt;
+
+  &lt;script src=&quot;background.js&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;</code></pre>
+      <pre class="code-block" data-lang="css"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>.animated-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;          /* behind the page */
+  overflow: hidden;
+  pointer-events: none; /* clicks go to your content */
+}
+.animated-bg canvas,
+.animated-bg svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.content { position: relative; }</code></pre>
+      <p>Pens often style <code>body</code> or <code>html</code> directly (for example <code>body { background: #000; overflow: hidden; }</code>). Move those rules onto <code>.animated-bg</code>, otherwise your page will stop scrolling.</p>
+      <p>Want the background only inside a hero section instead of the whole page? Use <code>position: absolute</code> and give the parent section <code>position: relative; overflow: hidden;</code>.</p></section><section id="iframe" class="guide-step"><h2><span class="step-no">3</span>Quick option: embed it with an iframe</h2>
+      <p>If you just want to try a background, the <b>Embed</b> button gives you an iframe that loads the pen from CodePen:</p>
+      <pre class="code-block" data-lang="html"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>&lt;iframe
+  src=&quot;https://codepen.io/USER/embed/PEN_ID?default-tab=result&amp;theme-id=dark&quot;
+  title=&quot;Animated background&quot;
+  loading=&quot;lazy&quot;
+  style=&quot;position:fixed;inset:0;width:100%;height:100%;border:0;z-index:-1&quot;
+  aria-hidden=&quot;true&quot; tabindex=&quot;-1&quot;&gt;&lt;/iframe&gt;</code></pre>
+      <p>It is fast to set up, but it depends on CodePen being online, adds their scripts to your page and can show CodePen branding. For production sites, copy the code into your own files instead.</p></section><section id="css-only" class="guide-step"><h2><span class="step-no">4</span>CSS-only backgrounds (gradients)</h2>
+      <p>Pure CSS backgrounds are the lightest option — no JavaScript at all. You can build one with the <a href="/create/">gradient creator</a> and copy the result:</p>
+      <pre class="code-block" data-lang="css"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>.hero {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient-move 15s ease infinite;
+}
+@keyframes gradient-move {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}</code></pre></section><section id="canvas" class="guide-step"><h2><span class="step-no">5</span>Canvas and WebGL backgrounds</h2>
+      <p>Particle, fluid and 3D backgrounds draw on a <code>&lt;canvas&gt;</code>. Three things make them behave well on a real site:</p>
+      <ol>
+        <li><b>Resize with the window</b> and respect <code>devicePixelRatio</code> (cap it at 2 to save battery).</li>
+        <li><b>Pause when the tab is hidden</b> — <code>requestAnimationFrame</code> already does, but stop timers and audio too.</li>
+        <li><b>Clean up</b> when the page or component is removed, so the loop does not keep running.</li>
+      </ol>
+      <pre class="code-block" data-lang="js"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>const canvas = document.querySelector(&#39;.animated-bg canvas&#39;);
+const ctx = canvas.getContext(&#39;2d&#39;);
+let raf;
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = innerWidth * dpr;
+  canvas.height = innerHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function frame(t) {
+  // ...draw one frame of the animation...
+  raf = requestAnimationFrame(frame);
+}
+addEventListener(&#39;resize&#39;, resize);
+resize();
+raf = requestAnimationFrame(frame);</code></pre></section><section id="react" class="guide-step"><h2><span class="step-no">6</span>React and Next.js</h2>
+      <p>Wrap the background in a component, start the animation in <code>useEffect</code> and stop it in the cleanup function. In the Next.js App Router, mark the file as a client component.</p>
+      <pre class="code-block" data-lang="jsx"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>&#39;use client&#39;;
+import { useEffect, useRef } from &#39;react&#39;;
+
+export default function AnimatedBackground() {
+  const ref = useRef(null);
+
+  useEffect(() =&gt; {
+    const canvas = ref.current;
+    const ctx = canvas.getContext(&#39;2d&#39;);
+    let raf;
+    const resize = () =&gt; { canvas.width = innerWidth; canvas.height = innerHeight; };
+    const frame = () =&gt; {
+      // paste the pen&#39;s drawing code here
+      raf = requestAnimationFrame(frame);
+    };
+    resize();
+    addEventListener(&#39;resize&#39;, resize);
+    raf = requestAnimationFrame(frame);
+    return () =&gt; { cancelAnimationFrame(raf); removeEventListener(&#39;resize&#39;, resize); };
+  }, []);
+
+  return &lt;canvas ref={ref} className=&quot;animated-bg&quot; aria-hidden=&quot;true&quot; /&gt;;
+}</code></pre>
+      <p>Put the CSS from the pen into a CSS module or your global stylesheet. If the pen uses a library such as Three.js, install it from npm (<code>npm i three</code>) instead of loading it from a CDN.</p></section><section id="vue" class="guide-step"><h2><span class="step-no">7</span>Vue and Nuxt</h2>
+      <pre class="code-block" data-lang="vue"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>&lt;template&gt;
+  &lt;canvas ref=&quot;bg&quot; class=&quot;animated-bg&quot; aria-hidden=&quot;true&quot; /&gt;
+&lt;/template&gt;
+
+&lt;script setup&gt;
+import { ref, onMounted, onBeforeUnmount } from &#39;vue&#39;;
+const bg = ref(null);
+let raf;
+
+onMounted(() =&gt; {
+  const ctx = bg.value.getContext(&#39;2d&#39;);
+  const frame = () =&gt; { /* pen drawing code */ raf = requestAnimationFrame(frame); };
+  raf = requestAnimationFrame(frame);
+});
+onBeforeUnmount(() =&gt; cancelAnimationFrame(raf));
+&lt;/script&gt;</code></pre>
+      <p>In Nuxt, wrap the component in <code>&lt;ClientOnly&gt;</code> because canvas code needs the browser.</p></section><section id="builders" class="guide-step"><h2><span class="step-no">8</span>WordPress, Webflow, Wix, Shopify and Framer</h2>
+      <ul>
+        <li><b>WordPress</b> — add a <i>Custom HTML</i> block for the markup, put the CSS in <i>Appearance → Customize → Additional CSS</i>, and load the JavaScript with a code-snippets plugin or your theme's footer.</li>
+        <li><b>Webflow</b> — add an <i>Embed</i> element for the HTML and paste the CSS and script into <i>Page settings → Custom code</i> (before <code>&lt;/body&gt;</code>).</li>
+        <li><b>Wix</b> — use <i>Embed Code → Embed HTML</i> and paste the whole pen as one HTML document (HTML, a <code>&lt;style&gt;</code> tag and a <code>&lt;script&gt;</code> tag), then stretch the element to full width.</li>
+        <li><b>Shopify</b> — create a <i>Custom Liquid</i> section, or add the code to <code>theme.liquid</code> for every page.</li>
+        <li><b>Framer</b> — add an <i>Embed</i> component with the HTML, or wrap the code in a Code Component.</li>
+      </ul></section><section id="apps" class="guide-step"><h2><span class="step-no">9</span>Mobile and desktop apps</h2>
+      <ul>
+        <li><b>React Native / Expo</b> — render the pen as an HTML string in <code>react-native-webview</code>, absolutely positioned behind your views, with <code>pointerEvents="none"</code>.</li>
+        <li><b>Flutter</b> — use <code>webview_flutter</code> for the live version, or rebuild simple gradients with an <code>AnimatedContainer</code>.</li>
+        <li><b>Electron, Tauri and PWAs</b> — they are web pages, so the full-screen layer from step 2 works as is.</li>
+        <li><b>Native iOS / Android</b> — record the background as a short looping MP4 or Lottie file and play it muted on loop. This uses far less battery than a WebView.</li>
+      </ul></section><section id="readable" class="guide-step"><h2><span class="step-no">10</span>Keep text readable on top</h2>
+      <p>Moving, high-contrast backgrounds make text hard to read. Add a dark or light scrim between the background and your content, and check contrast against the brightest frame.</p>
+      <pre class="code-block" data-lang="css"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>.animated-bg::after {
+  content: &quot;&quot;;
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 8, 6, .55); /* darken the animation */
+}</code></pre></section><section id="performance" class="guide-step"><h2><span class="step-no">11</span>Performance and accessibility checklist</h2>
+      <ul>
+        <li>Respect <code>prefers-reduced-motion</code>: show a still frame or slow the animation down.</li>
+        <li>Lower the particle count or resolution on small screens.</li>
+        <li>Stop the animation when it is off screen with an <code>IntersectionObserver</code>.</li>
+        <li>Mark the layer <code>aria-hidden="true"</code> so screen readers skip it.</li>
+        <li>Test with Lighthouse — an animated background should not push your Largest Contentful Paint past 2.5 s.</li>
+      </ul>
+      <pre class="code-block" data-lang="css"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>@media (prefers-reduced-motion: reduce) {
+  .animated-bg * { animation: none !important; }
+}</code></pre>
+      <pre class="code-block" data-lang="js"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>const reduce = matchMedia(&#39;(prefers-reduced-motion: reduce)&#39;).matches;
+if (!reduce) start();          // only animate when the user allows motion
+
+new IntersectionObserver(([e]) =&gt; e.isIntersecting ? start() : stop())
+  .observe(document.querySelector(&#39;.animated-bg&#39;));</code></pre></section><section id="license" class="guide-step"><h2><span class="step-no">12</span>Credit the author</h2>
+      <p>Every background on AnimatedBackgrounds.me was made by a CodePen author. Keep the license comment from the pen in your code, and add a credit link if the license asks for one, for example:</p>
+      <pre class="code-block" data-lang="html"><button class="copy-code" type="button" aria-label="Copy code"><i class="fa-regular fa-copy"></i></button><code>&lt;!-- Background: &quot;Pen name&quot; by Author — https://codepen.io/USER/pen/PEN_ID (MIT) --&gt;</code></pre></section>
+        <section id="faq" class="guide-step"><h2>FAQ</h2><details class="faq"><summary>Are the animated backgrounds free to use?</summary><p>They are free to browse and preview. Each background belongs to its CodePen author, and most pens are MIT-licensed, which allows commercial use with the license notice. Always check the pen before using it.</p></details><details class="faq"><summary>Will an animated background slow down my website?</summary><p>CSS-only backgrounds are very light. Canvas and WebGL backgrounds use the GPU, so cap the pixel ratio, pause them when hidden or off screen, and test with Lighthouse.</p></details><details class="faq"><summary>Can I use these backgrounds in WordPress without coding?</summary><p>Yes. Paste the HTML in a Custom HTML block, the CSS in Additional CSS and the JavaScript in a footer-code plugin. CSS-only gradients from the creator only need the CSS.</p></details><details class="faq"><summary>How do I put text on top of an animated background?</summary><p>Place the background in a fixed or absolute layer with z-index: -1 and pointer-events: none, then add a semi-transparent scrim so the text keeps enough contrast.</p></details><details class="faq"><summary>Can I use an animated background in a mobile app?</summary><p>Use a WebView in React Native or Flutter for the live version, or export a short looping video or Lottie file for native apps.</p></details></section>
+      </div>
+    </div>
+    <form class="subscribe" data-newsletter action="https://blog.animatedbackgrounds.me/_ob/subscribe" method="post">
+      <div class="subscribe-copy"><h2>Get new backgrounds and guides by email</h2><p>No spam. Unsubscribe anytime.</p></div>
+      <div class="subscribe-row">
+        <label class="sr-only" for="nl-guide">Email address</label>
+        <input id="nl-guide" type="email" name="email" required autocomplete="email" inputmode="email" placeholder="you@example.com">
+        <button class="btn btn-primary" type="submit">Subscribe</button>
+      </div>
+      <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <input type="hidden" name="form_key" value="home-newsletter"><input type="hidden" name="source" value="/guide/">
+      <p class="subscribe-status" role="status" aria-live="polite"></p>
+    </form>
+  </article></main>
+
+        <footer class="app-footer">
+          <p>© <span id="year">2026</span> AnimatedBackgrounds.me · Backgrounds are created by their CodePen authors — always check each pen's license before use.</p>
+          <nav aria-label="Footer"><a href="/guide/">How to use</a><a href="https://blog.animatedbackgrounds.me/">Blog</a><a href="/about/">About</a><a href="/privacy-policy/">Privacy</a><a href="/contact/">Contact</a></nav>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile bottom navigation (PWA feel) -->
+  <nav class="bottom-nav" aria-label="Quick navigation">
+    <a href="/" data-link data-nav="home"><i class="fa-solid fa-house"></i><span>Home</span></a>
+    <a href="/popular/" data-link data-nav="popular"><i class="fa-solid fa-fire"></i><span>Popular</span></a>
+    <a href="/create/" data-link data-nav="create" class="bn-create" aria-label="Gradient creator"><i class="fa-solid fa-wand-magic-sparkles"></i></a>
+    <a href="/favorites/" data-link data-nav="favorites"><i class="fa-solid fa-heart"></i><span>Liked</span></a>
+    <a href="/guide/" data-nav="guide"><i class="fa-solid fa-book-open"></i><span>Guide</span></a>
+  </nav>
+
+  <!-- Preview modal -->
+  <div class="modal" id="bg-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" id="modal-card">
+      <button class="modal-nav prev" id="modal-prev" aria-label="Previous background"><i class="fa-solid fa-chevron-left"></i></button>
+      <button class="modal-nav next" id="modal-next" aria-label="Next background"><i class="fa-solid fa-chevron-right"></i></button>
+      <div class="modal-head">
+        <div>
+          <h2 id="modal-title">Background</h2>
+          <p id="modal-sub" class="muted"></p>
+        </div>
+        <button class="icon-btn" data-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-stage" id="modal-stage"></div>
+      <div class="modal-foot">
+        <div class="modal-stats">
+          <span title="Views"><i class="fa-regular fa-eye"></i> <b id="modal-views">–</b></span>
+          <span title="Likes from all visitors"><i class="fa-regular fa-heart" data-like-icon=""></i> <b id="modal-likes">–</b></span>
+          <div class="chips" id="modal-tags"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-soft like-big" id="modal-like"><i class="fa-regular fa-heart"></i> <span>Like</span></button>
+          <button class="btn btn-soft tag-btn" id="modal-tag"><i class="fa-solid fa-tags"></i> <span class="hide-xs">Add tag</span></button>
+          <button class="btn btn-soft" id="modal-share"><i class="fa-solid fa-share-nodes"></i> <span class="hide-xs">Share</span></button>
+          <button class="btn btn-soft" id="modal-embed"><i class="fa-solid fa-code"></i> <span class="hide-xs">Embed</span></button>
+          <a class="btn btn-soft" id="modal-full" target="_blank" rel="noopener"><i class="fa-solid fa-expand"></i> <span class="hide-xs">Fullscreen</span></a>
+          <a class="btn btn-primary" id="modal-code" target="_blank" rel="noopener"><i class="fa-brands fa-codepen"></i> Get Code</a>
+        </div>
+        <div class="tag-panel" id="tag-panel" hidden></div>
+      </div>
+      <section class="modal-recs" id="modal-recs" aria-label="Recommended backgrounds"></section>
+    </div>
+  </div>
+
+  <!-- Generic dialog (submit / embed / settings on mobile) -->
+  <div class="modal" id="dialog" role="dialog" aria-modal="true" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card dialog-card" id="dialog-body"></div>
+  </div>
+
+  <div class="popover" id="popover" hidden></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="/assets/js/monetize.config.js?v=b101861115" defer></script>
+  <script src="/assets/js/monetize.js?v=b101861115" defer></script>
+  <script src="/assets/js/engine.js?v=b101861115" defer></script>
+  <script src="/assets/js/app.js?v=b101861115" defer></script>
+</body>
+</html>

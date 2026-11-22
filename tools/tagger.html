@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Background Tagger · Admin tool</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+<style>
+  :root { --p: #7c5cff; --b: #ecebf3; --m: #7a7891; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, sans-serif; background: #f5f4fb; color: #1f1d2b; }
+  header { position: sticky; top: 0; z-index: 5; background: #fff; border-bottom: 1px solid var(--b); padding: 12px 18px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; }
+  select, input, button { font: inherit; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--b); background: #fff; }
+  button { cursor: pointer; font-weight: 600; }
+  button.primary { background: var(--p); color: #fff; border-color: var(--p); }
+  .stat { color: var(--m); margin-left: auto; }
+  main { padding: 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+  .card { background: #fff; border-radius: 14px; border: 1px solid var(--b); overflow: hidden; }
+  .card.done { outline: 2px solid #22c58b; }
+  .card img { width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #eee; display: block; cursor: zoom-in; }
+  .body { padding: 10px; }
+  .body input.title { width: 100%; margin-bottom: 8px; }
+  .meta { font-size: 12px; color: var(--m); margin-bottom: 6px; display: flex; justify-content: space-between; gap: 6px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tags label { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--b); cursor: pointer; user-select: none; }
+  .tags input { display: none; }
+  .tags input:checked + span { color: #fff; }
+  .tags label:has(input:checked) { background: var(--p); border-color: var(--p); color: #fff; }
+  .help { background: #fff8e6; border: 1px solid #ffe2a3; margin: 18px 18px 0; padding: 12px 16px; border-radius: 12px; }
+  .pager { display: flex; justify-content: center; gap: 8px; padding: 0 0 30px; }
+  .ex { display: flex; gap: 6px; margin-top: 8px; }
+  .ex a { font-size: 12px; }
+  dialog { border: 0; border-radius: 16px; padding: 0; width: min(1000px, 95vw); }
+  dialog iframe { width: 100%; height: 70vh; border: 0; display: block; }
+</style>
+</head>
+<body>
+<header>
+  <h1><i class="fa-solid fa-tags"></i> Background Tagger</h1>
+  <select id="filter">
+    <option value="untagged">Untagged only</option>
+    <option value="all">All</option>
+    <option value="untitled">Without title</option>
+  </select>
+  <select id="catfilter"><option value="">Any collection</option></select>
+  <input id="q" placeholder="Filter by id / title / user">
+  <button id="save" class="primary"><i class="fa-solid fa-download"></i> Download backgrounds.json</button>
+  <button id="reset" title="Forget local edits">Reset</button>
+  <span class="stat" id="stat"></span>
+</header>
+<div class="help">
+  <b>How to use:</b> open this page on your live site (<code>/tools/tagger.html</code>) or locally. Thumbnails load from CodePen in <i>your</i> browser. Tick the collections that match each background (a background may be in several), optionally fix the title, then click <b>Download backgrounds.json</b> and replace <code>data/backgrounds.json</code> in the repo. Edits are auto-saved in this browser until you download. Click a thumbnail to see the live pen.
+</div>
+<main id="grid"></main>
+<div class="pager"><button id="prev">← Prev</button><span id="pg"></span><button id="next">Next →</button></div>
+<dialog id="dlg"><iframe id="frame" title="Preview"></iframe><div style="padding:10px;text-align:right"><button onclick="dlg.close();frame.src='about:blank'">Close</button></div></dialog>
+<script>
+(async () => {
+  const LS = 'ab:tagger';
+  const data = await fetch('/data/backgrounds.json').then(r => r.json());
+  const edits = JSON.parse(localStorage.getItem(LS) || '{}');
+  const cats = data.categories;
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  cats.forEach(c => $('#catfilter').insertAdjacentHTML('beforeend', `<option value="${c.slug}">${esc(c.name)}</option>`));
+  const cur = b => Object.assign({}, b, edits[b.id] || {});
+  let page = 0; const PER = 48;
+  function list() {
+    const f = $('#filter').value, cf = $('#catfilter').value, q = $('#q').value.toLowerCase();
+    return data.backgrounds.map(cur).filter(b =>
+      (f === 'all' || (f === 'untagged' ? !(b.tags || []).length || edits[b.id]?._touched : !b.title)) &&
+      (!cf || (b.tags || []).includes(cf)) &&
+      (!q || (b.id + ' ' + (b.title || '') + ' ' + b.user).toLowerCase().includes(q)));
+  }
+  function render() {
+    const L = list(); const pages = Math.max(1, Math.ceil(L.length / PER)); page = Math.min(page, pages - 1);
+    const tagged = data.backgrounds.map(cur).filter(b => (b.tags || []).length).length;
+    $('#stat').textContent = `${tagged}/${data.backgrounds.length} tagged · ${Object.keys(edits).length} edited · showing ${L.length}`;
+    $('#pg').textContent = `${page + 1} / ${pages}`;
+    $('#grid').innerHTML = L.slice(page * PER, page * PER + PER).map(b => `
+      <div class="card ${(b.tags || []).length ? 'done' : ''}" data-id="${esc(b.id)}">
+        <img src="https://shots.codepen.io/${esc(b.user)}/pen/${esc(b.id)}-512.jpg" loading="lazy" alt="" data-preview="https://codepen.io/${esc(b.user)}/embed/${esc(b.id)}?default-tab=result">
+        <div class="body">
+          <div class="meta"><span>${esc(b.id)} · @${esc(b.user)}</span><a href="https://codepen.io/${esc(b.user)}/pen/${esc(b.id)}" target="_blank" rel="noopener">open ↗</a></div>
+          <input class="title" placeholder="Title (optional)" value="${esc(b.title || '')}">
+          <div class="tags">${cats.map(c => `<label><input type="checkbox" value="${c.slug}" ${(b.tags || []).includes(c.slug) ? 'checked' : ''}><span>${esc(c.name)}</span></label>`).join('')}</div>
+          <div class="ex"><label style="font-size:12px"><input type="checkbox" class="feat" ${b.featured ? 'checked' : ''}> featured</label><label style="font-size:12px;margin-left:auto;color:#c0392b"><input type="checkbox" class="hide" ${b.hidden ? 'checked' : ''}> remove (broken)</label></div>
+        </div>
+      </div>`).join('');
+    scrollTo(0, 0);
+  }
+  $('#grid').addEventListener('change', e => {
+    const card = e.target.closest('.card'); if (!card) return;
+    const id = card.dataset.id;
+    const tags = [...card.querySelectorAll('.tags input:checked')].map(i => i.value);
+    edits[id] = Object.assign(edits[id] || {}, { tags, _touched: true, title: card.querySelector('.title').value.trim() || undefined,
+      featured: card.querySelector('.feat').checked || undefined, hidden: card.querySelector('.hide').checked || undefined });
+    card.classList.toggle('done', tags.length > 0);
+    localStorage.setItem(LS, JSON.stringify(edits));
+    const tagged = data.backgrounds.map(cur).filter(b => (b.tags || []).length).length;
+    $('#stat').textContent = `${tagged}/${data.backgrounds.length} tagged · ${Object.keys(edits).length} edited`;
+  });
+  $('#grid').addEventListener('click', e => { const p = e.target.dataset.preview; if (p) { frame.src = p; dlg.showModal(); } });
+  ['filter', 'catfilter'].forEach(id => $('#' + id).onchange = () => { page = 0; render(); });
+  $('#q').oninput = () => { page = 0; render(); };
+  $('#prev').onclick = () => { page = Math.max(0, page - 1); render(); };
+  $('#next').onclick = () => { page++; render(); };
+  $('#reset').onclick = () => { if (confirm('Discard all local edits?')) { localStorage.removeItem(LS); location.reload(); } };
+  $('#save').onclick = () => {
+    const out = Object.assign({}, data, {
+      backgrounds: data.backgrounds.map(cur).filter(b => !b.hidden).map(b => {
+        const o = { id: b.id, user: b.user }; if (b.title) o.title = b.title; if (b.author) o.author = b.author;
+        o.tags = b.tags || []; if (b.featured) o.featured = true; return o;
+      })
+    });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out)], { type: 'application/json' }));
+    a.download = 'backgrounds.json'; a.click();
+  };
+  render();
+})();
+</script>
+</body>
+</html>
