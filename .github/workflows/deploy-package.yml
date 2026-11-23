@@ -9,6 +9,7 @@ on:
       - 'assets/js/app.js'
       - 'assets/css/app.css'
       - 'sw.js'
+      - 'data/backgrounds.json'
   workflow_dispatch:
 
 permissions:
@@ -49,7 +50,16 @@ jobs:
           }
           mkdir -p "$RUNNER_TEMP/animatedbackgrounds-site"
           unzip -q "$SOURCE_ZIP" -d "$RUNNER_TEMP/animatedbackgrounds-site"
-          cd "$RUNNER_TEMP/animatedbackgrounds-site"
+          # Keep live screenshot edits made through Global Sync when rebuilding from the seed archive.
+          SITE_SOURCE="$RUNNER_TEMP/animatedbackgrounds-site"
+          if [ -f "$GITHUB_WORKSPACE/data/backgrounds.json" ]; then
+            install -D "$GITHUB_WORKSPACE/data/backgrounds.json" "$SITE_SOURCE/data/backgrounds.json"
+          fi
+          if [ -d "$GITHUB_WORKSPACE/assets/shots" ]; then
+            mkdir -p "$SITE_SOURCE/assets/shots"
+            cp -a "$GITHUB_WORKSPACE/assets/shots/." "$SITE_SOURCE/assets/shots/"
+          fi
+          cd "$SITE_SOURCE"
           node scripts/build.mjs
           test -f dist/index.html
           test -f dist/.nojekyll
