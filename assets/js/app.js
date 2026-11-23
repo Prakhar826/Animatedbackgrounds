@@ -81,7 +81,7 @@
   function loadData() {
     if (dataPromise) return dataPromise;
     dataPromise = Promise.all([
-      fetch('/data/backgrounds.json').then(r => r.json()),
+      fetch('/data/backgrounds.json', { cache: 'no-store' }).then(r => r.json()),
       fetch('/data/stats.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
       fetch('/data/meta.json').then(r => r.ok ? r.json() : null).catch(() => null)
     ]).then(([d, st, meta]) => {
@@ -1671,7 +1671,7 @@
           const detail = await assetPut.text();
           throw new Error(`Screenshot upload failed (${assetPut.status}): ${detail.slice(0, 140)}`);
         }
-        payload.url = `/${assetPath}`;
+        payload.url = `/${assetPath}?v=${Date.now()}`;
       }
       if (action === 'remove') {
         const b = lib.backgrounds.find(x => x.id === payload.id);
@@ -1689,7 +1689,7 @@
         if (payload.clear) delete b.screenshotUrl;
         else {
           const target = String(payload.url || '').trim();
-          if (!(/^https:\/\//i.test(target) || /^\/assets\/shots\/[A-Za-z0-9_-]+\.jpg$/i.test(target))) {
+          if (!(/^https:\/\//i.test(target) || /^\/assets\/shots\/[A-Za-z0-9_-]+\.jpg(?:\?v=\d+)?$/i.test(target))) {
             throw new Error('Screenshot must be an HTTPS image URL or an uploaded JPG asset.');
           }
           b.screenshotUrl = target;
@@ -1790,6 +1790,7 @@
           <div class="field"><label for="shot-editor-file">Upload screenshot</label><input id="shot-editor-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></div>
           <div class="field"><label for="shot-editor-url">Or image URL</label><input id="shot-editor-url" type="url" inputmode="url" placeholder="https://example.com/screenshot.jpg" value="${/^https:\/\//i.test(b.screenshotUrl || '') ? esc(b.screenshotUrl) : ''}"></div>
           <p class="muted" style="font-size:12px">Uploads are resized to a maximum of 1600 × 900 and saved as optimized JPG. Images are uploaded to this repository; URL-based screenshots keep their original public URL.</p>
+          <p class="req-msg" id="shot-editor-msg" role="status" aria-live="polite" hidden></p>
           <div class="dialog-actions">
             <button type="button" class="btn btn-ghost" data-close>Cancel</button>
             <button type="button" class="btn btn-ghost" id="shot-editor-reset">Reset to original</button>
@@ -1799,6 +1800,14 @@
       const fileInput = $('#shot-editor-file');
       const urlInput = $('#shot-editor-url');
       const preview = $('#shot-editor-preview');
+      const showShotMessage = (message, bad = false) => {
+        const el = $('#shot-editor-msg');
+        if (!el) return;
+        el.hidden = false;
+        el.textContent = message;
+        el.style.background = bad ? 'rgba(239,68,68,.16)' : '';
+        el.style.color = bad ? '#f87171' : '';
+      };
       const showPreview = src => {
         if (!preview) return;
         if (preview.tagName === 'IMG') preview.src = src;
@@ -1825,6 +1834,7 @@
       $('#shot-editor-reset').onclick = async () => {
         const btn = $('#shot-editor-reset');
         btn.disabled = true;
+        btn.textContent = 'Resetting…';
         try {
           await publishGlobal('screenshot', { id, clear: true });
           delete b.screenshotUrl;
@@ -1833,7 +1843,8 @@
           say(`Reset screenshot for ${id}. The original local screenshot will be used.`);
         } catch (err) {
           btn.disabled = false;
-          say(err.message, true);
+          btn.textContent = 'Reset to original';
+          showShotMessage(err.message, true);
         }
       };
       $('#shot-editor-form').onsubmit = async e => {
@@ -1841,7 +1852,9 @@
         const save = $('#shot-editor-save');
         const file = fileInput.files && fileInput.files[0];
         const url = urlInput.value.trim();
+        const originalSaveLabel = save.innerHTML;
         save.disabled = true;
+        save.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
         try {
           let payload;
           if (file) {
@@ -1854,14 +1867,15 @@
             throw new Error('Choose an image file or paste an image URL.');
           }
           await publishGlobal('screenshot', payload);
-          b.screenshotUrl = payload.url || `/assets/shots/${id}-custom.jpg`;
+          b.screenshotUrl = payload.url || `/assets/shots/${id}-custom.jpg?v=${Date.now()}`;
           if (S.shots) S.shots.add(id);
           closeDialog();
           paint();
           say(`Screenshot updated for ${id}. GitHub Pages will publish the change automatically.`);
         } catch (err) {
           save.disabled = false;
-          say(err.message, true);
+          save.innerHTML = originalSaveLabel;
+          showShotMessage(err.message, true);
         }
       };
     }
