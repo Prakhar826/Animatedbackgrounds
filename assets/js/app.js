@@ -1640,24 +1640,33 @@
         if (!r.ok) throw new Error(res.error || `API error ${r.status}`);
         return 'Published globally via Worker — site rebuild triggered for everybody.';
       }
+
       const gh = getGh();
       if (!gh.repo || !gh.token) {
         if (action === 'screenshot') throw new Error('Connect Global Sync first. Screenshot changes must be saved to GitHub to appear for everyone.');
         return null;
       }
+
       const branch = gh.branch || 'main';
       const url = `https://api.github.com/repos/${gh.repo}/contents/data/backgrounds.json`;
-      const headers = { authorization: `Bearer ${gh.token}`, accept: 'application/vnd.github+json', 'content-type': 'application/json' };
-      const gr = await fetch(`${url}?ref=${encodeURIComponent(branch)}`, { headers });
-      if (!gr.ok) throw new Error(`GitHub read failed (${gr.status}) — check repo/token in Global Sync`);
-      const file = await gr.json();
-      const lib = JSON.parse(b64dec(file.content));
-      let msg = '';
+      const headers = {
+        authorization: `Bearer ${gh.token}`,
+        accept: 'application/vnd.github+json',
+        'content-type': 'application/json'
+      };
+
+      // Upload the screenshot asset once. The metadata update below always reads
+      // the newest backgrounds.json so concurrent edits cannot silently overwrite one another.
       if (action === 'screenshot' && payload.imageBase64) {
         const assetPath = `assets/shots/${payload.id}-custom.jpg`;
         const assetUrl = `https://api.github.com/repos/${gh.repo}/contents/${assetPath}`;
-        const existing = await fetch(`${assetUrl}?ref=${encodeURIComponent(branch)}`, { headers });
-        if (!existing.ok && existing.status !== 404) throw new Error(`Could not check screenshot file (${existing.status})`);
+        const existing = await fetch(`${assetUrl}?ref=${encodeURIComponent(branch)}&_=${Date.now()}`, {
+          headers,
+          cache: 'no-store'
+        });
+        if (!existing.ok && existing.status !== 404) {
+          throw new Error(`Could not check screenshot file (${existing.status})`);
+        }
         const assetBody = {
           message: `Update screenshot for background ${payload.id}`,
           content: payload.imageBase64,
@@ -1665,58 +1674,95 @@
         };
         if (existing.ok) assetBody.sha = (await existing.json()).sha;
         const assetPut = await fetch(assetUrl, {
-          method: 'PUT', headers, body: JSON.stringify(assetBody)
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(assetBody)
         });
         if (!assetPut.ok) {
           const detail = await assetPut.text();
-          throw new Error(`Screenshot upload failed (${assetPut.status}): ${detail.slice(0, 140)}`);
+          throw new Error(`Screenshot upload failed (${assetPut.status}): ${detail.slice(0, 180)}`);
         }
         payload.url = `/${assetPath}?v=${Date.now()}`;
       }
-      if (action === 'remove') {
-        const b = lib.backgrounds.find(x => x.id === payload.id);
-        if (!b) throw new Error('Background ID not found in repo data/backgrounds.json');
-        b.hidden = true;
-        msg = `Remove background ${payload.id} for all visitors`;
-      } else if (action === 'restore') {
-        const b = lib.backgrounds.find(x => x.id === payload.id);
-        if (!b) throw new Error('Background ID not found in repo data/backgrounds.json');
-        delete b.hidden;
-        msg = `Restore background ${payload.id} for all visitors`;
-      } else if (action === 'screenshot') {
-        const b = lib.backgrounds.find(x => x.id === payload.id);
-        if (!b) throw new Error('Background ID not found in repo data/backgrounds.json');
-        if (payload.clear) delete b.screenshotUrl;
-        else {
-          const target = String(payload.url || '').trim();
-          if (!(/^https:\/\//i.test(target) || /^\/assets\/shots\/[A-Za-z0-9_-]+\.jpg(?:\?v=\d+)?$/i.test(target))) {
-            throw new Error('Screenshot must be an HTTPS image URL or an uploaded JPG asset.');
+
+      const applyChange = lib => {
+        let msg = '';
+        if (action === 'remove') {
+          const b = lib.backgrounds.find(x => x.id === payload.id);
+          if (!b) throw new Error('Background ID not found in repo data/backgrounds.json');
+          b.hidden = true;
+          msg = `Remove background ${payload.id} for all visitors`;
+        } else if (action === 'restore') {
+          const b = lib.backgrounds.find(x => x.id === payload.id);
+          if (!b) throw new Error('Background ID not found in repo data/backgrounds.json');
+          delete b.hidden;
+          msg = `Restore background ${payload.id} for all visitors`;
+        } else if (action === 'screenshot') {
+          const b = lib.backgrounds.find(x => x.id === payload.id);
+          if (!b) throw new Error('Background ID not found in repo data/backgrounds.json');
+          if (payload.clear) delete b.screenshotUrl;
+          else {
+            const target = String(payload.url || '').trim();
+            if (!(/^https:\/\//i.test(target) || /^\/assets\/shots\/[A-Za-z0-9_-]+\.jpg(?:\?v=\d+)?$/i.test(target))) {
+              throw new Error('Screenshot must be an HTTPS image URL or an uploaded JPG asset.');
+            }
+            b.screenshotUrl = target;
           }
-          b.screenshotUrl = target;
+          msg = payload.clear ? `Reset screenshot for background ${payload.id}` : `Change screenshot for background ${payload.id}`;
+        } else if (action === 'add') {
+          const ex = lib.backgrounds.find(x => x.id === payload.id);
+          if (ex) {
+            delete ex.hidden;
+            if (payload.title) ex.title = payload.title;
+            if (payload.author) ex.author = payload.author;
+            if (payload.tags && payload.tags.length) ex.tags = [...new Set([...(ex.tags || []), ...payload.tags])];
+          } else {
+            const entry = { id: payload.id, user: payload.user || 'username', tags: payload.tags || [] };
+            if (payload.title) entry.title = payload.title;
+            if (payload.author) entry.author = payload.author;
+            lib.backgrounds.unshift(entry);
+          }
+          msg = `Add background ${payload.id} for all visitors`;
         }
-        msg = payload.clear ? `Reset screenshot for background ${payload.id}` : `Change screenshot for background ${payload.id}`;
-      } else if (action === 'add') {
-        const ex = lib.backgrounds.find(x => x.id === payload.id);
-        if (ex) {
-          delete ex.hidden;
-          if (payload.title) ex.title = payload.title;
-          if (payload.author) ex.author = payload.author;
-          if (payload.tags && payload.tags.length) ex.tags = [...new Set([...(ex.tags || []), ...payload.tags])];
-        } else {
-          const entry = { id: payload.id, user: payload.user || 'username', tags: payload.tags || [] };
-          if (payload.title) entry.title = payload.title;
-          if (payload.author) entry.author = payload.author;
-          lib.backgrounds.unshift(entry);
+        return msg;
+      };
+
+      // Retry SHA conflicts by fetching the latest JSON and re-applying only this edit.
+      // This is safe for concurrent screenshot edits to different backgrounds.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const gr = await fetch(`${url}?ref=${encodeURIComponent(branch)}&_=${Date.now()}`, {
+          headers,
+          cache: 'no-store'
+        });
+        if (!gr.ok) throw new Error(`GitHub read failed (${gr.status}) — check repo/token in Global Sync`);
+        const file = await gr.json();
+        const lib = JSON.parse(b64dec(file.content));
+        const msg = applyChange(lib);
+
+        const pr = await fetch(url, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            message: msg,
+            content: b64enc(JSON.stringify(lib)),
+            sha: file.sha,
+            branch
+          })
+        });
+
+        if (pr.ok) {
+          return 'Committed to GitHub — GitHub Actions is rebuilding the live site for everybody!';
         }
-        msg = `Add background ${payload.id} for all visitors`;
+
+        const detail = await pr.text();
+        if ((pr.status === 409 || pr.status === 422) && attempt < 4) {
+          await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+          continue;
+        }
+        throw new Error(`GitHub commit failed (${pr.status}): ${detail.slice(0, 180)}`);
       }
-      const pr = await fetch(url, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ message: msg, content: b64enc(JSON.stringify(lib)), sha: file.sha, branch })
-      });
-      if (!pr.ok) { const t = await pr.text(); throw new Error(`GitHub commit failed (${pr.status}): ${t.slice(0, 120)}`); }
-      return 'Committed to GitHub — GitHub Actions is rebuilding the live site for everybody!';
+
+      throw new Error('GitHub is receiving several simultaneous updates. Your screenshot file is uploaded, but its listing update could not be committed. Please press Save screenshot again.');
     }
 
     const openSyncDialog = () => {
