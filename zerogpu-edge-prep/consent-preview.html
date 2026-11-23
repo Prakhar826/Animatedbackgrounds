@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ZeroGPU consent preview — Animated Backgrounds</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0c1019;--panel:#151d2b;--line:#2b3a50;--muted:#9eacc0;--text:#f3f6fc;--accent:#7c9cff;--good:#72d6a0}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;padding:24px 16px;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 0,#20345a 0,transparent 55%),var(--bg);font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
+    main{width:min(100%,650px);border:1px solid var(--line);border-radius:20px;background:rgba(21,29,43,.97);padding:clamp(20px,5vw,34px);box-shadow:0 24px 80px #0008}
+    .eyebrow{font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:#a8bcff;font-weight:700}
+    h1{font-size:clamp(25px,5vw,34px);line-height:1.15;margin:8px 0 12px}
+    p{color:var(--muted);margin:8px 0 16px}
+    .notice{border:1px solid #66542a;background:#302719;color:#f5deb0;padding:12px 14px;border-radius:12px;font-size:13px;margin:18px 0}
+    .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
+    .fact{border:1px solid var(--line);border-radius:12px;padding:12px;background:#101826}
+    .fact b{display:block;font-size:14px}.fact span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+    .consent{display:flex;align-items:flex-start;gap:12px;border:1px solid var(--line);padding:14px;border-radius:12px;margin:16px 0;background:#101826}
+    input[type=checkbox]{width:20px;height:20px;flex:0 0 20px;margin:2px 0 0;accent-color:var(--accent)}
+    label{font-size:14px}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+    button{border:0;border-radius:11px;padding:12px 16px;font:600 14px system-ui;cursor:pointer}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .primary{background:var(--accent);color:#10172a}.secondary{background:#263348;color:var(--text);border:1px solid var(--line)}
+    .status{margin-top:16px;padding:12px 14px;border-radius:12px;background:#101826;border:1px solid var(--line);font-size:13px;color:var(--muted)}
+    .status strong{color:var(--good)}
+    .fine{font-size:12px;color:#8493a9;margin-top:18px}
+    @media(max-width:480px){body{padding:12px}main{border-radius:16px}.facts{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Optional device participation · Preview only</div>
+    <h1>Help power AI while you're here</h1>
+    <p>Animated Backgrounds may offer an optional way to contribute some spare device capacity to ZeroGPU's distributed AI network. Browsing and using the background gallery must continue to work normally when this option is off.</p>
+    <div class="notice"><b>This is a design preview, not an active integration.</b> No SDK is loaded, no device is registered, and no compute or network contribution is started by this page.</div>
+    <div class="facts">
+      <div class="fact"><b>Optional and off by default</b><span>Nothing starts unless the visitor deliberately enables it.</span></div>
+      <div class="fact"><b>Spare resources</b><span>Potential CPU/GPU processing and network capacity may be used.</span></div>
+      <div class="fact"><b>Possible device impact</b><span>Processing can affect battery, heat, data use, and performance.</span></div>
+      <div class="fact"><b>Third-party monetization</b><span>Contributed capacity may be shared with third parties for compensation.</span></div>
+    </div>
+    <div class="consent">
+      <input id="resource-consent" type="checkbox">
+      <label for="resource-consent">I have read the disclosure above and I expressly agree that Animated Backgrounds may use my device's spare processing capacity and network resources, and may make money by sharing that capacity with ZeroGPU and its customers. I understand I can withdraw consent and turn this off.</label>
+    </div>
+    <div class="consent">
+      <input id="age-consent" type="checkbox">
+      <label for="age-consent">I confirm that I am at least 18 years old.</label>
+    </div>
+    <div class="actions">
+      <button id="enable" class="primary" disabled>Enable participation (demo only)</button>
+      <button id="disable" class="secondary" disabled>Turn off</button>
+    </div>
+    <div class="status" id="status" role="status" aria-live="polite">Status: <strong>Off</strong>. This mock does not communicate with ZeroGPU.</div>
+    <p class="fine">Consent wording, age gating, recordkeeping, and withdrawal controls must be reviewed against ZeroGPU's current agreement before production. This page stores only a temporary demo flag in this tab and is not a valid production consent ledger.</p>
+  </main>
+  <script>
+    const resource = document.getElementById('resource-consent');
+    const age = document.getElementById('age-consent');
+    const enable = document.getElementById('enable');
+    const disable = document.getElementById('disable');
+    const status = document.getElementById('status');
+    let demoEnabled = false;
+    function update() {
+      enable.disabled = demoEnabled || !resource.checked || !age.checked;
+      disable.disabled = !demoEnabled;
+    }
+    resource.addEventListener('change', update);
+    age.addEventListener('change', update);
+    enable.addEventListener('click', () => {
+      if (!resource.checked || !age.checked) return;
+      demoEnabled = true;
+      status.innerHTML = 'Status: <strong>Demo consent recorded in this tab only</strong>. No SDK was loaded and no compute is running.';
+      update();
+    });
+    disable.addEventListener('click', () => {
+      demoEnabled = false;
+      resource.checked = false;
+      age.checked = false;
+      status.innerHTML = 'Status: <strong>Off</strong>. Demo consent cleared. No SDK was loaded and no compute is running.';
+      update();
+    });
+    update();
+  </script>
+</body>
+</html>
