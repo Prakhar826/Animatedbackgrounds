@@ -1612,9 +1612,10 @@
     const API = (CFG.apiBase || '').replace(/\/$/, '');
     let open = session.get('admin-token') === 'ok';
     let adminPass = session.get('admin-pass') || '';
-    let tab = 'manage'; // 'manage' | 'add' | 'queue'
+    let tab = 'manage'; // 'manage' | 'screenshots' | 'add' | 'queue'
     let bgQuery = '';
     let bgFilter = 'all';
+    let shotFilter = 'all';
     let bgLimit = 40;
 
     const getRemoved = () => store.get('removed', []);
@@ -1783,6 +1784,7 @@
       const current = thumb(b);
       openDialog(`<h2><i class="fa-regular fa-image"></i> Change screenshot</h2>
         <p class="muted">Replace the preview image for <b>${esc(b.name)}</b> (<code>${esc(id)}</code>). You can upload an image or paste a public HTTPS image URL.</p>
+        ${hasGlobal() ? '' : '<p class="req-msg">Global Sync is not connected in this browser. Connect it above to save the change for everyone. Alternatively, you can ask ChatGPT to update this background directly through the connected repository.</p>'}
         ${current ? `<img id="shot-editor-preview" src="${esc(current)}" alt="Current screenshot" style="display:block;width:100%;max-height:220px;object-fit:contain;background:var(--surface-2);border-radius:10px;margin:0 0 14px">` : '<div id="shot-editor-preview" class="shot-fallback" style="width:100%;height:150px;margin-bottom:14px"></div>'}
         <form id="shot-editor-form">
           <div class="field"><label for="shot-editor-file">Upload screenshot</label><input id="shot-editor-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></div>
@@ -1909,6 +1911,23 @@
       </article>`;
     }).join('');
 
+    const shotRowsHTML = list => list.map(b => {
+      const srcImg = thumb(b);
+      const custom = !!(b.screenshotUrl && String(b.screenshotUrl).trim());
+      return `<article class="req screenshot-row" data-bg-id="${esc(b.id)}">
+        ${srcImg ? `<img src="${esc(srcImg)}" alt="" loading="lazy">` : `<span class="shot-fallback" style="width:140px;aspect-ratio:16/10;border-radius:8px"><i class="fa-solid fa-wand-magic-sparkles"></i></span>`}
+        <div>
+          <h3>${esc(b.name)}</h3>
+          <p><code>${esc(b.id)}</code> · ${esc(b.by)}</p>
+          <span class="status ${custom ? 'approved' : 'pending'}">${custom ? 'Custom screenshot' : 'Original screenshot'}</span>
+        </div>
+        <div class="req-actions">
+          <a class="btn btn-ghost btn-sm" href="/background/${esc(b.id)}/" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square"></i> Preview</a>
+          <button type="button" class="btn btn-primary btn-sm" data-edit-shot="${esc(b.id)}"><i class="fa-regular fa-image"></i> Change Screenshot</button>
+        </div>
+      </article>`;
+    }).join('');
+
     const renderView = () => {
       const list = reqList();
       const pending = list.filter(r => (r.status || 'pending') === 'pending');
@@ -1939,6 +1958,28 @@
             </div>
           </div>
           <div class="req-list">${visible.length ? bgRowsHTML(visible, remSet) : '<p class="muted">No matching backgrounds found.</p>'}</div>
+          ${filtered.length > bgLimit ? `<div class="load-more-wrap"><button class="btn btn-soft btn-sm" id="admin-bg-more">Show more (${filtered.length - bgLimit} remaining)</button></div>` : ''}`;
+      } else if (tab === 'screenshots') {
+        const q = bgQuery.trim().toLowerCase();
+        const filtered = allBgs.filter(b => {
+          const custom = !!(b.screenshotUrl && String(b.screenshotUrl).trim());
+          if (shotFilter === 'custom' && !custom) return false;
+          if (shotFilter === 'original' && custom) return false;
+          if (!q) return true;
+          return b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q) || b.by.toLowerCase().includes(q);
+        });
+        const visible = filtered.slice(0, bgLimit);
+        body = `
+          <p class="muted" style="margin:0 0 12px">Choose a background and select <b>Change Screenshot</b>. Upload an image or paste a public HTTPS image URL. Changes are saved to the shared GitHub library when Global Sync is connected.</p>
+          <div class="admin-filter-bar">
+            <input id="admin-bg-search" type="search" value="${esc(bgQuery)}" placeholder="Search by title, author, or CodePen ID…">
+            <div class="segmented">
+              <button type="button" data-shot-filter="all" class="${shotFilter === 'all' ? 'active' : ''}">All (${allBgs.length})</button>
+              <button type="button" data-shot-filter="original" class="${shotFilter === 'original' ? 'active' : ''}">Original</button>
+              <button type="button" data-shot-filter="custom" class="${shotFilter === 'custom' ? 'active' : ''}">Custom</button>
+            </div>
+          </div>
+          <div class="req-list">${visible.length ? shotRowsHTML(visible) : '<p class="muted">No matching backgrounds found.</p>'}</div>
           ${filtered.length > bgLimit ? `<div class="load-more-wrap"><button class="btn btn-soft btn-sm" id="admin-bg-more">Show more (${filtered.length - bgLimit} remaining)</button></div>` : ''}`;
       } else if (tab === 'add') {
         body = `
@@ -1986,6 +2027,7 @@
 
         <div class="admin-nav">
           <button type="button" data-admin-tab="manage" class="${tab === 'manage' ? 'active' : ''}"><i class="fa-solid fa-trash-can"></i> Remove Backgrounds <span class="nav-count">${rem.length ? rem.length + ' removed' : allBgs.length}</span></button>
+          <button type="button" data-admin-tab="screenshots" class="${tab === 'screenshots' ? 'active' : ''}"><i class="fa-regular fa-image"></i> Edit Screenshots</button>
           <button type="button" data-admin-tab="add" class="${tab === 'add' ? 'active' : ''}"><i class="fa-solid fa-plus"></i> Add Background${added.length ? ` <span class="nav-count">+${added.length}</span>` : ''}</button>
           <button type="button" data-admin-tab="queue" class="${tab === 'queue' ? 'active' : ''}"><i class="fa-solid fa-inbox"></i> Request Queue <span class="nav-count">${pending.length}</span></button>
         </div>
@@ -2007,6 +2049,9 @@
       if (syncBtn) syncBtn.onclick = openSyncDialog;
       $('[data-edit-shot]').forEach(btn => {
         btn.onclick = () => openScreenshotDialog(btn.dataset.editShot);
+      });
+      $('[data-shot-filter]').forEach(btn => {
+        btn.onclick = () => { shotFilter = btn.dataset.shotFilter; bgLimit = 40; paint(); };
       });
 
       $$('[data-admin-tab]').forEach(btn => {

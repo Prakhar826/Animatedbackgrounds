@@ -6,6 +6,8 @@ on:
     paths:
       - 'animatedbackgrounds-deploy-ready-secure.zip'
       - '.github/workflows/deploy-package.yml'
+      - 'assets/js/app.js'
+      - 'assets/css/app.css'
   workflow_dispatch:
 
 permissions:
@@ -65,7 +67,12 @@ jobs:
             --exclude='/.github/' \
             --exclude='/.gitignore' \
             --exclude='/assets/js/app.js' \
+            --exclude='/assets/css/app.css' \
             "$RUNNER_TEMP/animatedbackgrounds-site/dist/" "$GITHUB_WORKSPACE/"
+          CACHE_VERSION="${GITHUB_SHA:0:12}"
+          find "$GITHUB_WORKSPACE" -type f -name '*.html' ! -path "$GITHUB_WORKSPACE/.git/*" -print0 | while IFS= read -r -d '' html; do
+            sed -i -E "s#(/assets/js/app\\.js\\?v=)[^\"' ]+#\\1${CACHE_VERSION}#g; s#(/assets/css/app\\.css\\?v=)[^\"' ]+#\\1${CACHE_VERSION}#g" "$html"
+          done
           git -C "$GITHUB_WORKSPACE" add -A
           if ! git -C "$GITHUB_WORKSPACE" diff --cached --quiet; then
             git -C "$GITHUB_WORKSPACE" config user.name "github-actions[bot]"
