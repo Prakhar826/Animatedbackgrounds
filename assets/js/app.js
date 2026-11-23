@@ -2047,10 +2047,10 @@
       $('#admin-out').onclick = () => { session.del('admin-token'); session.del('admin-pass'); open = false; login(); };
       const syncBtn = $('#admin-sync-btn');
       if (syncBtn) syncBtn.onclick = openSyncDialog;
-      $('[data-edit-shot]').forEach(btn => {
+      $$('[data-edit-shot]').forEach(btn => {
         btn.onclick = () => openScreenshotDialog(btn.dataset.editShot);
       });
-      $('[data-shot-filter]').forEach(btn => {
+      $$('[data-shot-filter]').forEach(btn => {
         btn.onclick = () => { shotFilter = btn.dataset.shotFilter; bgLimit = 40; paint(); };
       });
 
