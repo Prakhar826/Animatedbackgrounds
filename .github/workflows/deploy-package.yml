@@ -8,6 +8,7 @@ on:
       - '.github/workflows/deploy-package.yml'
       - 'assets/js/app.js'
       - 'assets/css/app.css'
+      - 'sw.js'
   workflow_dispatch:
 
 permissions:
@@ -68,6 +69,7 @@ jobs:
             --exclude='/.gitignore' \
             --exclude='/assets/js/app.js' \
             --exclude='/assets/css/app.css' \
+            --exclude='/sw.js' \
             "$RUNNER_TEMP/animatedbackgrounds-site/dist/" "$GITHUB_WORKSPACE/"
           CACHE_VERSION="${GITHUB_SHA:0:12}"
           find "$GITHUB_WORKSPACE" -type f -name '*.html' ! -path "$GITHUB_WORKSPACE/.git/*" -print0 | while IFS= read -r -d '' html; do
