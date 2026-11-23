@@ -61,6 +61,48 @@ jobs:
           fi
           cd "$SITE_SOURCE"
           node scripts/build.mjs
+          # Apply owner-managed custom screenshots to every generated static HTML page.
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+
+          const dist = path.resolve('dist');
+          const library = JSON.parse(fs.readFileSync(path.join(process.env.GITHUB_WORKSPACE, 'data/backgrounds.json'), 'utf8'));
+          const htmlFiles = [];
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) walk(full);
+              else if (entry.isFile() && entry.name.endsWith('.html')) htmlFiles.push(full);
+            }
+          }
+          walk(dist);
+
+          let updated = 0;
+          for (const bg of (library.backgrounds || [])) {
+            const id = String(bg.id || '');
+            const custom = typeof bg.screenshotUrl === 'string' ? bg.screenshotUrl.trim() : '';
+            if (!/^[A-Za-z0-9_-]+$/.test(id) || !custom) continue;
+            if (!/^https:\/\//i.test(custom) && !/^\/assets\/shots\/[A-Za-z0-9_-]+\.jpg(?:\?v=\d+)?$/i.test(custom)) continue;
+            const absolute = custom.startsWith('/') ? 'https://animatedbackgrounds.me' + custom : custom;
+            const bare = custom.replace(/^\//, '');
+            const oldAbsolute = 'https://animatedbackgrounds.me/assets/shots/' + id + '.jpg';
+            const oldPath = '/assets/shots/' + id + '.jpg';
+            const oldBare = 'assets/shots/' + id + '.jpg';
+            for (const file of htmlFiles) {
+              let html = fs.readFileSync(file, 'utf8');
+              const before = html;
+              html = html.split(oldAbsolute).join(absolute);
+              html = html.split(oldPath).join(custom);
+              html = html.split(oldBare).join(bare);
+              if (html !== before) {
+                fs.writeFileSync(file, html);
+                updated++;
+              }
+            }
+          }
+          console.log('Applied custom screenshots to ' + updated + ' generated HTML files.');
+          NODE
           test -f dist/index.html
           test -f dist/.nojekyll
           test -f dist/CNAME
