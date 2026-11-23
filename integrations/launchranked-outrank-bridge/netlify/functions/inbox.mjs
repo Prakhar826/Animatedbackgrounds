@@ -1,7 +1,5 @@
 import { getStore } from "@netlify/blobs";
 
-const encoder = new TextEncoder();
-
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -37,7 +35,7 @@ export default async function readLaunchRankedInbox(request) {
   const authorization = request.headers.get("authorization") || "";
   const suppliedToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
 
-  if (!safeEqual(encoder.encode(suppliedToken).toString(), encoder.encode(adminToken).toString())) {
+  if (!safeEqual(suppliedToken, adminToken)) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
