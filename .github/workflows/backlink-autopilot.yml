@@ -1,0 +1,58 @@
+name: Backlink autopilot
+
+on:
+  schedule:
+    # Daily at 09:00 Asia/Kolkata (03:30 UTC)
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backlink-autopilot
+  cancel-in-progress: false
+
+jobs:
+  outreach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Run Apollo discovery and Gmail outreach
+        env:
+          APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          OUTREACH_SEND_ENABLED: ${{ vars.OUTREACH_SEND_ENABLED }}
+          OUTREACH_FROM_NAME: ${{ vars.OUTREACH_FROM_NAME }}
+          OUTREACH_REPLY_TO: ${{ vars.OUTREACH_REPLY_TO }}
+          OUTREACH_UNSUBSCRIBE_EMAIL: ${{ vars.OUTREACH_UNSUBSCRIBE_EMAIL }}
+          OUTREACH_POSTAL_ADDRESS: ${{ vars.OUTREACH_POSTAL_ADDRESS }}
+          OUTREACH_MAX_EMAILS_PER_RUN: ${{ vars.OUTREACH_MAX_EMAILS_PER_RUN }}
+        run: node .github/scripts/backlink-autopilot.mjs
+
+      - name: Persist outreach state
+        if: always()
+        run: |
+          if git diff --quiet -- data/backlink-autopilot; then
+            echo "No state changes to persist."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/backlink-autopilot
+          git commit -m "chore: update backlink autopilot state"
+          git push origin HEAD:main
