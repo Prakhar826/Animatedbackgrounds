@@ -34,7 +34,3 @@ For the first article, leave the PR open until its exact MDX/frontmatter format 
 - Only files in `content/blog/*.mdx` are considered.
 - Changes to the main website, its deployment archive, or the existing website deployment workflow do not trigger this publishing workflow.
 - No Netlify site or other hosting is required.
-
-## Optional webhook prototype
-
-`launchranked-outrank-bridge/` contains an older Netlify webhook-inbox prototype. It is not required for the GitHub Actions route and should remain undeployed unless you explicitly choose the webhook approach.
