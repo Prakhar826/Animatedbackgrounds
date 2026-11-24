@@ -96,8 +96,11 @@ async function apiRequest(url, options = {}) {
   return { response, payload };
 }
 
-function changedArticleFiles(baseSha, mergeSha) {
-  const changed = execFileSync("git", ["diff", "--diff-filter=AM", "--name-only", baseSha, mergeSha], {
+function changedArticleFiles(mergeSha) {
+  // Compare the merge commit with its first parent. This works for normal
+  // merge commits and squash merges, and captures the single-article PR.
+  const parent = `${mergeSha}^`;
+  const changed = execFileSync("git", ["diff", "--diff-filter=AM", "--name-only", parent, mergeSha], {
     encoding: "utf8"
   }).split(/\r?\n/).filter(Boolean);
 
@@ -184,14 +187,13 @@ async function main() {
   if (!API_KEY) fail("Add OUTRANK_API_KEY as a GitHub Actions secret.");
   if (!/^[a-z0-9.-]+$/.test(EXPECTED_BLOG_DOMAIN)) fail("OUTRANK_EXPECTED_BLOG_DOMAIN is invalid.");
 
-  const baseSha = process.env.PR_BASE_SHA;
   const mergeSha = process.env.PR_MERGE_SHA;
-  if (!baseSha || !mergeSha) fail("The workflow did not provide the pull request base and merge commit SHAs.");
+  if (!mergeSha) fail("The workflow did not provide the pull request merge commit SHA.");
 
   const productId = await resolveProductId();
   console.log(`Verified the Outrank blog product for ${EXPECTED_BLOG_DOMAIN}.`);
 
-  const files = changedArticleFiles(baseSha, mergeSha);
+  const files = changedArticleFiles(mergeSha);
   if (!files.length) {
     console.log("No added or modified LaunchRanked MDX article files were found in this merged PR.");
     return;
