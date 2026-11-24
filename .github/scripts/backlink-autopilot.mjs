@@ -186,10 +186,7 @@ async function main() {
   log("Discovering relevant publishing and web-design contacts with Apollo.");
   const candidates = await discover();
   log(`Found ${candidates.length} new relevant contact candidates.`);
-  const enriched = await enrich(candidates.slice(0, 10));
-  log(`${enriched.length} candidates have verified business email addresses.`);
-
-  let sent = 0;
+  state.candidateQueue = candidates.slice(0, 30).map(({ person, domain, score }) => ({\n    domain, score,\n    person: [person.first_name, person.last_name].filter(Boolean).join(" "),\n    title: person.title || null,\n    company: person.organization?.name || null,\n    discoveredAt: new Date().toISOString()\n  }));\n\n  // Apollo enrichment can consume credits. Do not enrich anything in discovery-only mode.\n  const enriched = enabled ? await enrich(candidates.slice(0, 10)) : [];\n  log(`${enriched.length} candidates have verified business email addresses.`);\n\n  let sent = 0;
   if (enabled && maxEmails > 0 && enriched.length) {
     const token = await gmailAccessToken();
     for (const candidate of enriched.slice(0, maxEmails)) {
