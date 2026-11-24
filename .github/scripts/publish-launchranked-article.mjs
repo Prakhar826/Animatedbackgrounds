@@ -137,25 +137,59 @@ function extractArticle(filePath) {
   return post;
 }
 
+function collectIds(value, ids = new Set()) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectIds(item, ids);
+  } else if (value && typeof value === "object") {
+    if (typeof value.id === "string" && /^[0-9a-f-]{16,}$/i.test(value.id)) ids.add(value.id);
+    for (const child of Object.values(value)) collectIds(child, ids);
+  }
+  return ids;
+}
+
+async function verifyProductBlog(productId) {
+  const url = `${API_BASE}/products/${encodeURIComponent(productId)}/blog`;
+  const { response, payload } = await apiRequest(url);
+  if (!response.ok) return false;
+  return JSON.stringify(payload).toLowerCase().includes(EXPECTED_BLOG_DOMAIN);
+}
+
+async function resolveProductId() {
+  if (PRODUCT_ID) {
+    if (!(await verifyProductBlog(PRODUCT_ID))) {
+      fail(`OUTRANK_PRODUCT_ID does not resolve to the expected blog "${EXPECTED_BLOG_DOMAIN}". Nothing was published.`);
+    }
+    return PRODUCT_ID;
+  }
+
+  const { response, payload } = await apiRequest(`${API_BASE}/products`);
+  if (!response.ok) {
+    fail(`Could not list Outrank products (HTTP ${response.status}): ${JSON.stringify(payload).slice(0, 1200)}`);
+  }
+
+  const matches = [];
+  for (const candidateId of collectIds(payload)) {
+    if (await verifyProductBlog(candidateId)) matches.push(candidateId);
+  }
+
+  if (matches.length !== 1) {
+    fail(matches.length
+      ? `More than one Outrank product matches "${EXPECTED_BLOG_DOMAIN}". Add the correct OUTRANK_PRODUCT_ID as a repository variable.`
+      : `Could not find an Outrank product whose hosted blog is "${EXPECTED_BLOG_DOMAIN}". Check the API key and that this exact blog is enabled for the product. You can set OUTRANK_PRODUCT_ID as a repository variable if needed.`);
+  }
+  return matches[0];
+}
+
 async function main() {
   if (!API_KEY) fail("Add OUTRANK_API_KEY as a GitHub Actions secret.");
-  if (!PRODUCT_ID) fail("Add OUTRANK_PRODUCT_ID as a GitHub Actions repository variable.");
   if (!/^[a-z0-9.-]+$/.test(EXPECTED_BLOG_DOMAIN)) fail("OUTRANK_EXPECTED_BLOG_DOMAIN is invalid.");
 
   const baseSha = process.env.PR_BASE_SHA;
   const mergeSha = process.env.PR_MERGE_SHA;
   if (!baseSha || !mergeSha) fail("The workflow did not provide the pull request base and merge commit SHAs.");
 
-  const blogUrl = `${API_BASE}/products/${encodeURIComponent(PRODUCT_ID)}/blog`;
-  const { response: blogResponse, payload: blogPayload } = await apiRequest(blogUrl);
-  if (!blogResponse.ok) {
-    fail(`Could not verify the Outrank blog for product ${PRODUCT_ID} (HTTP ${blogResponse.status}): ${JSON.stringify(blogPayload).slice(0, 1200)}`);
-  }
-
-  const blogText = JSON.stringify(blogPayload).toLowerCase();
-  if (!blogText.includes(EXPECTED_BLOG_DOMAIN)) {
-    fail(`The selected Outrank product does not confirm the expected blog domain "${EXPECTED_BLOG_DOMAIN}". Nothing was published. Check OUTRANK_PRODUCT_ID.`);
-  }
+  const productId = await resolveProductId();
+  console.log(`Verified the Outrank blog product for ${EXPECTED_BLOG_DOMAIN}.`);
 
   const files = changedArticleFiles(baseSha, mergeSha);
   if (!files.length) {
@@ -168,7 +202,7 @@ async function main() {
     console.log(`Publishing "${post.title}" from ${file} to ${EXPECTED_BLOG_DOMAIN}...`);
 
     const { response, payload } = await apiRequest(
-      `${API_BASE}/products/${encodeURIComponent(PRODUCT_ID)}/blog/posts`,
+      `${API_BASE}/products/${encodeURIComponent(productId)}/blog/posts`,
       { method: "POST", body: JSON.stringify(post) }
     );
 
