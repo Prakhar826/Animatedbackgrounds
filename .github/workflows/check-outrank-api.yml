@@ -1,0 +1,26 @@
+name: Check Outrank API access
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Verify API key, entitlements and blog product
+        env:
+          OUTRANK_API_KEY: ${{ secrets.OUTRANK_API_KEY }}
+          OUTRANK_EXPECTED_BLOG_DOMAIN: blog.animatedbackgrounds.me
+        run: node .github/scripts/check-outrank-access.mjs
