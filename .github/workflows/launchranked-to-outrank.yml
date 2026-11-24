@@ -34,6 +34,7 @@ jobs:
       - name: Publish approved article(s) to Outrank
         env:
           OUTRANK_API_KEY: ${{ secrets.OUTRANK_API_KEY }}
+          OUTRANK_PRODUCT_ID: 80492be6-6921-42a0-826c-03c380408d58
           OUTRANK_PRODUCT_ID: ${{ vars.OUTRANK_PRODUCT_ID }}
           OUTRANK_EXPECTED_BLOG_DOMAIN: blog.animatedbackgrounds.me
           PR_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
