@@ -9,8 +9,9 @@ This route uses GitHub Actions and posts directly to the Outrank-hosted blog at 
 1. In Outrank, open your account menu → **API Keys** and create an API key.
 2. In GitHub, open this repository → **Settings → Secrets and variables → Actions → New repository secret**.
 3. Name the secret `OUTRANK_API_KEY` and paste the Outrank key as its value. Do not commit the key to the repository.
-4. In LaunchRanked → **Settings → Publishing**, choose **GitHub PR** and connect `Prakhar826/Animatedbackgrounds`. Use `main` as the target branch if LaunchRanked asks for one.
-5. LaunchRanked's example GitHub output uses one MDX file per PR under `content/blog/` (for example, `content/blog/an-article-slug.mdx`). The workflow listens only for merged PRs that change MDX files in that folder.
+4. Open the repository's **Actions** tab, choose **Check Outrank API access**, then click **Run workflow**. This is a read-only check: it verifies the key, reports the `blog` entitlement, and checks which product exposes `blog.animatedbackgrounds.me`.
+5. In LaunchRanked → **Settings → Publishing**, choose **GitHub PR** and connect `Prakhar826/Animatedbackgrounds` if LaunchRanked confirms that GitHub PR is the supported route for your Outrank-hosted blog. Use `main` as the target branch if requested.
+6. The current publisher expects one MDX article per PR under `content/blog/` (for example, `content/blog/an-article-slug.mdx`). Inspect the first PR before merging; we must verify its path and frontmatter match the publisher.
 
 ### How publishing works
 
@@ -24,7 +25,8 @@ For the first article, leave the PR open until its exact MDX/frontmatter format 
 ### GitHub settings
 
 - Required repository secret: `OUTRANK_API_KEY`
-- Optional repository variable: `OUTRANK_PRODUCT_ID` (only needed if the API key covers multiple Outrank products and automatic matching cannot uniquely identify `blog.animatedbackgrounds.me`).
+- Optional repository variable: `OUTRANK_PRODUCT_ID` (only needed if the key covers multiple Outrank products and the blog diagnostic cannot uniquely identify `blog.animatedbackgrounds.me`).
+- Manual diagnostic: **Actions → Check Outrank API access → Run workflow**. The check performs GET requests only and never creates or publishes posts.
 
 ### Safety boundaries
 
