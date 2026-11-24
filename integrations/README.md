@@ -25,7 +25,7 @@ For the first article, leave the PR open until its exact MDX/frontmatter format 
 ### GitHub settings
 
 - Required repository secret: `OUTRANK_API_KEY`
-- Optional repository variable: `OUTRANK_PRODUCT_ID` (only needed if the key covers multiple Outrank products and the blog diagnostic cannot uniquely identify `blog.animatedbackgrounds.me`).
+- The publishing workflow is pinned to the verified Animated Backgrounds Outrank product and checks `blog.animatedbackgrounds.me` before publishing.
 - Manual diagnostic: **Actions → Check Outrank API access → Run workflow**. The check performs GET requests only and never creates or publishes posts.
 
 ### Safety boundaries
