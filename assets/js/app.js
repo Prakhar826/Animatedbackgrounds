@@ -212,8 +212,9 @@
   function likesOf(id) {
     const s = S.stats.b && S.stats.b[id], l = S.live[id];
     const sl = s ? s[1] : 0;
-    if (l && l.l != null && l.t > (S.stats.updated || 0)) return l.l;
-    return sl;
+    // Likes are cumulative and never decremented. Keep the larger value so a
+    // snapshot taken mid-scan cannot temporarily hide a newer live increment.
+    return l && l.l != null ? Math.max(sl, l.l) : sl;
   }
   const score = b => viewsOf(b.id) + likesOf(b.id) * 8 + (b.featured ? 3 : 0) + (Likes.has(b.id) ? 2 : 0);
 
