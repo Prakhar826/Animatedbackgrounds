@@ -228,6 +228,23 @@ async function testStatsReaderRateLimit() {
   assert.match(statsSync, /const views = await getCounter\([\s\S]*const likes = await getCounter\(/, "each pair of counters is awaited sequentially");
 }
 
+function testGridUsesSharedSnapshot() {
+  const snapshotStart = app.indexOf("  function snapshotViewsOf(id) {");
+  const scoreEnd = app.indexOf("\n  /* ---------------- likes (localStorage) ---------------- */", snapshotStart);
+  assert.ok(snapshotStart >= 0 && scoreEnd > snapshotStart, "shared snapshot helpers are present");
+  const snapshotBlock = app.slice(snapshotStart, scoreEnd);
+  assert.match(snapshotBlock, /function snapshotViewsOf\(id\)[\s\S]*return s \? s\[0\] : 0/, "grid views come from shared stats.json");
+  assert.match(snapshotBlock, /function snapshotLikesOf\(id\)[\s\S]*return s \? s\[1\] : 0/, "grid likes come from shared stats.json");
+  assert.match(snapshotBlock, /const score = b => snapshotViewsOf\(b\.id\) \+ snapshotLikesOf\(b\.id\) \* 8/, "popular sorting uses the shared snapshot");
+
+  const refreshStart = app.indexOf("  function refreshCounts(id) {");
+  const refreshEnd = app.indexOf("\n  function toggleLike", refreshStart);
+  const refreshBlock = app.slice(refreshStart, refreshEnd);
+  assert.match(refreshBlock, /btn\.closest\('\.bg-card'\) \? snapshotLikesOf\(id\) : n/, "grid-card like numbers do not use per-tab live state");
+  assert.match(refreshBlock, /el\.closest\('\.bg-card'\) \? snapshotViewsOf\(id\) : viewsOf\(id\)/, "grid-card view numbers do not use per-tab live state");
+  assert.match(refreshBlock, /el\.closest\('\.bg-card'\) \? snapshotLikesOf\(id\) : likesOf\(id\)/, "grid-card like-stat labels use the shared snapshot while detail views stay live");
+}
+
 function testBrowserConsistencyGuards() {
   assert.match(app, /live:\s*\{\}/, "live counter cache is memory-only");
   assert.doesNotMatch(app, /store\.set\('live',\s*S\.live\)/, "global counter values are not persisted per browser");
@@ -244,4 +261,5 @@ await testLikeRequestCoalescing();
 await testStatsReaderRateLimit();
 testCumulativeLikesNeverRegress();
 testBrowserConsistencyGuards();
-console.log("PASS: browser counter retries, failed-view recovery, confirmed-like state, request timeouts and coalescing, cross-browser cache guards, service-worker freshness, serialized stats reads, and cumulative-like monotonicity.");
+testGridUsesSharedSnapshot();
+console.log("PASS: browser counter retries, failed-view recovery, confirmed-like state, request timeouts and coalescing, cross-browser cache guards, shared grid snapshots, service-worker freshness, serialized stats reads, and cumulative-like monotonicity.");
