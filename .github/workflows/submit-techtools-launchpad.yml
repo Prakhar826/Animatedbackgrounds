@@ -1,0 +1,30 @@
+name: Submit Animated Backgrounds to TechTools Launchpad
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backlink-queue/techtools-launchpad.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-directory-submissions
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out submission details
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Submit one relevant listing
+        run: node .github/scripts/submit-techtools-launchpad.mjs backlink-queue/techtools-launchpad.json
