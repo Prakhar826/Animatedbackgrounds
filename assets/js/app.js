@@ -49,25 +49,86 @@
     const k = (prefix + '-' + id).replace(/[^A-Za-z0-9_.-]/g, '-');
     return k.length <= 64 ? k : k.slice(0, 54) + '-' + djb2(k);
   }
-  const Counter = {
-    async req(path) {
-      try {
-        const r = await fetch(`${COUNTER_API}/${path}`, { cache: 'no-store' });
-        if (r.status === 404) return 0;
-        if (!r.ok) return null;
-        const j = await r.json();
-        return typeof j.value === 'number' ? j.value : null;
-      } catch (e) { return null; }
-    },
-    hit(k) { return this.req(`hit/${NS}/${k}`); },
-    get(k) { return this.req(`get/${NS}/${k}`); }
-  };
+  /* Abacus: serialize requests per tab and retry explicit 429s. A 429 is
+     guaranteed not to have incremented the counter, so retrying is safe.
+     Do not blindly retry a timed-out hit: the server may have processed it. */
+  const Counter = (() => {
+    let queue = Promise.resolve();
+    let lastRequestAt = 0;
+    const MIN_GAP_MS = 420;
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    function retryDelay(response, attempt) {
+      const header = response.headers && response.headers.get('Retry-After');
+      let delay = header ? Number(header) : NaN;
+      if (!Number.isFinite(delay) && header) {
+        const date = Date.parse(header);
+        if (Number.isFinite(date)) delay = date - Date.now();
+      }
+      if (!(delay > 0)) {
+        const reset = Number(response.headers && response.headers.get('RateLimit-Reset'));
+        if (Number.isFinite(reset) && reset > 0) delay = reset * 1000 - Date.now();
+      }
+      if (!(delay > 0)) delay = 1000 * (attempt + 1);
+      return Math.min(15000, Math.max(1000, delay)) + Math.floor(Math.random() * 120);
+    }
+
+    async function req(path, safeToRetry = false) {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const task = queue.then(async () => {
+          const gap = MIN_GAP_MS - (Date.now() - lastRequestAt);
+          if (gap > 0) await sleep(gap);
+          lastRequestAt = Date.now();
+          return fetch(`${COUNTER_API}/${path}`, { cache: 'no-store' });
+        });
+        queue = task.then(() => undefined, () => undefined);
+
+        let response;
+        try {
+          response = await task;
+        } catch (error) {
+          if (safeToRetry && attempt < 2) {
+            await sleep(500 * (attempt + 1));
+            continue;
+          }
+          return null;
+        }
+
+        if (response.status === 404) return 0;
+        if (response.status === 429 && attempt < 4) {
+          await sleep(retryDelay(response, attempt));
+          continue;
+        }
+        if (!response.ok) {
+          if (safeToRetry && response.status >= 500 && attempt < 2) {
+            await sleep(500 * (attempt + 1));
+            continue;
+          }
+          return null;
+        }
+
+        try {
+          const json = await response.json();
+          return typeof json.value === 'number' && Number.isFinite(json.value) ? json.value : null;
+        } catch (error) {
+          return null;
+        }
+      }
+      return null;
+    }
+
+    return {
+      req,
+      hit(key) { return req(`hit/${NS}/${key}`, false); },
+      get(key) { return req(`get/${NS}/${key}`, true); }
+    };
+  })();
 
   /* ---------------- state ---------------- */
   const S = {
     cats: [], bgs: [], byId: new Map(), catMap: new Map(),
     stats: { b: {}, updated: 0 },
-    live: store.get('live', {}),
+    live: {}, // Global values are never persisted per browser; stats.json is shared.
     shots: null,             // Set of ids with a local screenshot (null = unknown)
     picks: {}, hero: null,
     posts: null,
@@ -142,7 +203,7 @@
     S.live[id] = Object.assign({}, S.live[id], patch, { t: Date.now() });
     const keys = Object.keys(S.live);
     if (keys.length > 900) keys.sort((a, b) => S.live[a].t - S.live[b].t).slice(0, 300).forEach(k => delete S.live[k]);
-    store.set('live', S.live);
+
   }
   function viewsOf(id) {
     const s = S.stats.b && S.stats.b[id], l = S.live[id];
@@ -161,25 +222,35 @@
   const Likes = {
     list: store.get('likes', []),
     ever: store.get('likedEver', {}),
+    inflight: new Set(),
     has(id) { return this.list.includes(id); },
     toggle(id) {
       const on = !this.has(id);
-      const base = likesOf(id);
       if (on) {
-        this.list.unshift(id);
-        if (!this.ever[id]) {
-          this.ever[id] = Date.now(); store.set('likedEver', this.ever);
-          setLive(id, { l: base + 1 });
-          Counter.hit(ckey('l', id)).then(v => { if (v != null) { setLive(id, { l: v }); refreshCounts(id); } });
-        } else setLive(id, { l: base + 1 });
+        this.list = [id, ...this.list.filter(x => x !== id)];
       } else {
         this.list = this.list.filter(x => x !== id);
-        setLive(id, { l: Math.max(0, base - 1) });
       }
       store.set('likes', this.list);
       refreshCounts(id);
       updateNavCounts();
       return on;
+    },
+    async count(id) {
+      if (this.ever[id]) return true;
+      if (this.inflight.has(id)) return false;
+      this.inflight.add(id);
+      const value = await Counter.hit(ckey('l', id));
+      this.inflight.delete(id);
+
+      // Never mark a like as counted until Abacus confirms the increment.
+      // This is the key fix for likes that previously failed silently forever.
+      if (value == null) return false;
+      this.ever[id] = Date.now();
+      store.set('likedEver', this.ever);
+      setLive(id, { l: value });
+      refreshCounts(id);
+      return true;
     },
     clear() { this.list = []; store.set('likes', []); updateNavCounts(); }
   };
@@ -202,11 +273,23 @@
     $$(`[data-views="${CSS.escape(id)}"]`).forEach(el => el.textContent = fmt(viewsOf(id)));
     $$(`[data-likes="${CSS.escape(id)}"]`).forEach(el => el.textContent = fmt(likesOf(id)));
   }
+  function toggleLike(id, btn = null) {
+    const on = Likes.toggle(id);
+    if (btn) { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
+    toast(on ? 'Added to Favorites' : 'Removed from Favorites', on ? 'fa-solid fa-heart' : 'fa-regular fa-heart');
+
+    if (on && !Likes.ever[id]) {
+      Likes.count(id).then(ok => {
+        if (!ok && Likes.has(id)) {
+          toast('Saved on this browser, but the global like could not sync. Please try again when online.', 'fa-solid fa-triangle-exclamation');
+        }
+      });
+    }
+    return on;
+  }
   function likeClick(btn) {
     const id = btn.dataset.like;
-    const on = Likes.toggle(id);
-    btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop');
-    toast(on ? 'Added to Favorites' : 'Removed from Favorites', on ? 'fa-solid fa-heart' : 'fa-regular fa-heart');
+    const on = toggleLike(id, btn);
     if (!on && location.pathname.startsWith('/favorites')) {
       const card = btn.closest('.bg-card'); if (card && !btn.closest('.modal')) card.remove();
       if (!Likes.list.length) render(location.pathname, false);
@@ -218,7 +301,9 @@
     const k = ckey('v', id);
     const already = session.get('v:' + id);
     const v = already ? await Counter.get(k) : await Counter.hit(k);
-    if (!already) session.set('v:' + id, '1');
+    // Only mark this item as viewed after the server confirms the increment.
+    // Failed requests remain eligible for a later retry in this session.
+    if (!already && v != null) session.set('v:' + id, '1');
     if (v != null) setLive(id, { v });
     refreshCounts(id);
   }
@@ -1547,7 +1632,7 @@
       switch (act.dataset.act) {
         case 'preview': openModal(id, visibleList()); break;
         case 'tag': openModal(id, visibleList()); setTimeout(() => { const bb = S.byId.get(id); if (bb) openTagPanel(bb, $('#tag-panel')); }, 60); break;
-        case 'like': { const btn = document.querySelector(`.bg-card [data-like="${CSS.escape(id)}"]`); btn ? likeClick(btn) : (Likes.toggle(id), toast('Favorites updated')); break; }
+        case 'like': { const btn = document.querySelector(`.bg-card [data-like="${CSS.escape(id)}"]`); btn ? likeClick(btn) : toggleLike(id); break; }
         case 'share': share(b.name, pageUrl(b)); break;
         case 'link': copy(pageUrl(b), 'Link copied'); break;
         case 'embed': embedDialog(id); break;
