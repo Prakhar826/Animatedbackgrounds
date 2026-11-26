@@ -2,7 +2,7 @@ name: Sync global background stats
 
 on:
   schedule:
-    - cron: "17 2 * * *"
+    - cron: "17 */6 * * *"
   push:
     branches: [main]
     paths:
