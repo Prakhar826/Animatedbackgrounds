@@ -6,7 +6,6 @@ on:
   push:
     branches: [main]
     paths:
-      - "assets/js/app.js"
       - ".github/scripts/sync-background-stats.mjs"
   workflow_dispatch:
 
