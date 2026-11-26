@@ -27,7 +27,9 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check assets/js/app.js
+          node --check sw.js
           node --check .github/scripts/test-counter-system.mjs
+          node --check .github/scripts/sync-background-stats.mjs
 
       - name: Run counter regression tests
         run: node .github/scripts/test-counter-system.mjs
