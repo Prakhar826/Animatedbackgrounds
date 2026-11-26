@@ -1022,3 +1022,61 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
   .modal-head { gap: 8px; padding-left: 12px; padding-right: 12px; }
   .modal-head h2 { font-size: 15px; line-height: 1.3; }
 }
+
+/* ---------- Discovery shelves and in-player recommendations ---------- */
+.hidden-gems-section { margin-top: 24px; }
+.hidden-gems-section .section-head h2 { display: flex; align-items: center; gap: 8px; }
+.hidden-gems-section .section-head h2 i { color: var(--text-2); font-size: .9em; }
+
+.background-detail-layout { display: grid; grid-template-columns: minmax(220px, 270px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.background-detail-main { min-width: 0; }
+.detail-recommendations { position: sticky; top: 14px; max-height: calc(100vh - 120px); overflow-y: auto; min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 15px; background: var(--surface); scrollbar-width: thin; }
+.detail-recs-heading { margin: 0 0 12px; }
+.detail-recs-heading h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.detail-recs-heading p { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.detail-rec-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.detail-rec-card { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: center; min-width: 0; padding: 7px; border: 1px solid transparent; border-radius: 11px; background: var(--surface-2); color: var(--text); text-decoration: none !important; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+.detail-rec-card:hover { transform: translateY(-1px); border-color: var(--border-strong); background: var(--surface-active); }
+.detail-rec-thumb { position: relative; display: block; width: 96px; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 7px; background: #09090b; }
+.detail-rec-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.detail-rec-badge { position: absolute; right: 4px; bottom: 4px; max-width: calc(100% - 8px); padding: 2px 5px; overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(15,15,16,.78); color: #fff; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.detail-rec-info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.detail-rec-info strong { display: -webkit-box; overflow: hidden; color: var(--text); font-size: 12px; font-weight: 500; line-height: 1.3; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.detail-rec-info small { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 10.5px; white-space: nowrap; }
+.detail-recs-all { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding: 8px 2px 0; border-top: 1px solid var(--border); color: var(--text-2); font-size: 12px; text-decoration: none !important; }
+.detail-recs-all:hover { color: var(--text); }
+
+/* Wide preview: keep recommendations visible at the left of the playing background. */
+@media (min-width: 861px) {
+  .modal-card { display: grid; grid-template-columns: minmax(230px, 260px) minmax(0, 1fr); grid-template-rows: auto minmax(250px, 1fr) auto; height: min(720px, calc(100vh - 48px)); max-height: calc(100vh - 48px); }
+  .modal-head { grid-column: 1 / -1; grid-row: 1; }
+  .modal-stage { grid-column: 2; grid-row: 2; height: 100%; min-height: 0; max-height: none; aspect-ratio: auto; margin: 0 20px 0 0; }
+  .modal-foot { grid-column: 2; grid-row: 3; align-items: flex-start; padding: 12px 20px 16px 0; }
+  .modal-recs { grid-column: 1; grid-row: 2 / 4; min-height: 0; max-height: none; overflow-y: auto; border-top: 0; border-right: 1px solid var(--border); border-radius: 0 0 0 var(--radius-panel); padding: 14px 12px 18px; }
+  .modal-recs-head { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .modal-recs-head p { font-size: 11.5px; }
+  .modal-recs-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .rec-card { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; }
+  .rec-thumb { width: 88px; height: 64px; aspect-ratio: auto; }
+  .rec-info { flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px; padding: 6px 8px; border-top: 0; }
+  .rec-info strong { display: -webkit-box; overflow: hidden; font-size: 12px; line-height: 1.25; white-space: normal; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .rec-info span { font-size: 11px; }
+  .modal-nav.prev { left: 270px; }
+  .modal-nav.next { right: 14px; }
+}
+
+@media (max-width: 860px) {
+  .background-detail-layout { grid-template-columns: minmax(0, 1fr); }
+  .background-detail-main { order: 1; }
+  .detail-recommendations { position: static; order: 2; max-height: none; margin-top: 16px; }
+  .detail-rec-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .modal-card { display: flex; flex-direction: column; height: auto; }
+  .modal-recs { order: 4; max-height: none; border-top: 1px solid var(--border); border-right: 0; border-radius: 0 0 var(--radius-panel) var(--radius-panel); }
+  .modal-recs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rec-card { display: flex; }
+}
+@media (max-width: 520px) {
+  .detail-rec-list { grid-template-columns: minmax(0, 1fr); }
+  .detail-rec-card { grid-template-columns: 104px minmax(0, 1fr); }
+  .detail-rec-thumb { width: 104px; }
+}
