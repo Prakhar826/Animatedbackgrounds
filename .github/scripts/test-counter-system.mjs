@@ -195,6 +195,7 @@ async function testStatsReaderRateLimit() {
 function testBrowserConsistencyGuards() {
   assert.match(app, /live:\s*\{\}/, "live counter cache is memory-only");
   assert.doesNotMatch(app, /store\.set\('live',\s*S\.live\)/, "global counter values are not persisted per browser");
+  assert.match(app, /fetch\('\/data\/stats\.json',\s*\{\s*cache:\s*'no-store'\s*\}\)/, "shared global stats bypass stale browser HTTP cache");
   assert.match(app, /if \(!already && v != null\) session\.set\('v:' \+ id, '1'\)/, "view session marker requires server confirmation");
   assert.match(app, /if \(value == null\) return false;[\s\S]*this\.ever\[id\] = Date\.now\(\)/, "like lifetime marker requires server confirmation");
   assert.match(sw, /url\.pathname === '\/assets\/js\/app\.js'[\s\S]*networkFirst\(req, CORE\)/, "service worker refreshes the app script network-first");
