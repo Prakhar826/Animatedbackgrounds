@@ -6,6 +6,7 @@ on:
     paths:
       - "assets/js/app.js"
       - ".github/scripts/test-counter-system.mjs"
+      - ".github/scripts/sync-background-stats.mjs"
   workflow_dispatch:
 
 permissions:
