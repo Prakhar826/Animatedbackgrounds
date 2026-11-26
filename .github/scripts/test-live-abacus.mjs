@@ -33,6 +33,18 @@ async function main() {
   assert.equal(after.body.value, hit.body.value, "get must return the value written by hit");
 
   console.log(`PASS: live Abacus hit/get verified in isolated namespace. Test key: ${namespace}/${key}. Production background counters were not touched.`);
+
+  // Read-only checks against real production counters; never increment them.
+  for (const productionKey of ["v-ByVyzb", "l-ByVyzb", "v-AmqdWE", "l-AmqdWE"]) {
+    const production = await request(`get/animatedbackgrounds.me/${productionKey}`);
+    if (production.status === 404) {
+      console.log(`Production counter not created yet: ${productionKey} (0)`);
+      continue;
+    }
+    assert.equal(production.status, 200, `Production counter read failed for ${productionKey}: ${JSON.stringify(production.body)}`);
+    assert.ok(Number.isSafeInteger(production.body.value) && production.body.value >= 0, `Invalid production value for ${productionKey}`);
+    console.log(`Production counter read OK: ${productionKey} = ${production.body.value}`);
+  }
 }
 
 main().catch(error => {
