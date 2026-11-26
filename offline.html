@@ -41,7 +41,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
   <link rel="stylesheet" href="/assets/css/site.css?v=2201acc0ff">
-  <link rel="stylesheet" href="/assets/css/app.css?v=4fe3fafbef54">
+  <link rel="stylesheet" href="/assets/css/app.css?v=cf88198d8ee1">
 
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-QYRH5XJN84"></script>
@@ -54,6 +54,16 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Animated Backgrounds","url":"https://animatedbackgrounds.me/","potentialAction":{"@type":"SearchAction","target":"https://animatedbackgrounds.me/search/?q={query}","query-input":"required name=query"}}</script>
 </head>
 <body data-route="page">
+  <div class="site-preloader" id="site-preloader" role="status" aria-live="polite">
+  <div class="preloader-mark" aria-hidden="true">
+    <span class="preloader-ring"></span>
+    <img src="/assets/icons/android-chrome-192x192.png" alt="" width="36" height="36">
+  </div>
+  <strong class="preloader-brand">Animated Backgrounds</strong>
+  <span class="preloader-caption">Preparing your gallery…</span>
+  <span class="preloader-progress" aria-hidden="true"><span></span></span>
+</div>
+<noscript><style>.site-preloader{display:none!important}</style></noscript>
   <a class="skip-link" href="#view">Skip to content</a>
 
   <div class="app-shell" id="app">
@@ -172,6 +182,9 @@
         </div>
         <button class="icon-btn" data-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
       </div>
+      <div class="modal-layout" id="modal-layout">
+        <section class="modal-recs" id="modal-recs" aria-label="Recommended backgrounds"></section>
+        <div class="modal-main">
       <div class="modal-stage" id="modal-stage"></div>
       <div class="modal-foot">
         <div class="modal-stats">
@@ -189,7 +202,9 @@
         </div>
         <div class="tag-panel" id="tag-panel" hidden></div>
       </div>
-      <section class="modal-recs" id="modal-recs" aria-label="Recommended backgrounds"></section>
+
+        </div>
+      </div>
     </div>
   </div>
 
@@ -205,6 +220,6 @@
   <script src="/assets/js/monetize.config.js?v=2201acc0ff" defer></script>
   <script src="/assets/js/monetize.js?v=2201acc0ff" defer></script>
   <script src="/assets/js/engine.js?v=2201acc0ff" defer></script>
-  <script src="/assets/js/app.js?v=4fe3fafbef54" defer></script>
+  <script src="/assets/js/app.js?v=cf88198d8ee1" defer></script>
 </body>
 </html>
