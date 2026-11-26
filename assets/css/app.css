@@ -1160,11 +1160,13 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
 }
 .detail-recs-all:hover { color: var(--text); }
 
-/* ---------- Preview player layout: sidebar belongs to #bg-modal only ---------- */
+/* ---------- Preview player: explicit desktop two-column grid ---------- */
 #bg-modal .modal-card {
-  --rec-column: clamp(200px, 24vw, 260px);
-  display: flex;
-  flex-direction: column;
+  --rec-column: clamp(220px, 25vw, 280px);
+  display: grid;
+  grid-template-columns: var(--rec-column) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: stretch;
   width: min(1240px, calc(100vw - 48px));
   height: min(760px, calc(100dvh - 48px));
   max-height: calc(100vh - 48px);
@@ -1174,64 +1176,26 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
   border-radius: var(--radius-panel);
 }
 #bg-modal .modal-head {
-  flex: 0 0 auto;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-width: 0;
   align-items: center;
   padding: 16px 18px 12px;
 }
+/* The wrapper is only needed for the narrow-screen stack. On desktop its
+   children become direct grid items, so the sidebar cannot be pushed below. */
 #bg-modal .modal-layout {
-  display: grid;
-  grid-template-columns: var(--rec-column) minmax(0, 1fr);
-  column-gap: 16px;
-  align-items: stretch;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  padding: 0 18px 18px;
-}
-#bg-modal .modal-layout:not(.has-recommendations) { grid-template-columns: minmax(0, 1fr); }
-#bg-modal .modal-main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
-#bg-modal .modal-stage {
-  position: relative;
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0;
-  min-height: 0;
-  max-height: none;
-  height: auto;
-  aspect-ratio: auto;
-  margin: 0;
-  border-radius: 14px;
-}
-#bg-modal .modal-stage iframe {
-  position: absolute;
-  top: -50px;
-  left: 0;
-  display: block;
-  width: 100%;
-  max-width: none;
-  height: calc(100% + 86px);
-  border: 0;
-  z-index: 1;
-  background: #09090b;
-}
-#bg-modal .modal-stage .stage-poster { z-index: 0; }
-#bg-modal .modal-stage .stage-loading { z-index: 2; pointer-events: none; }
-#bg-modal .modal-foot {
-  flex: 0 0 auto;
-  align-items: flex-start;
-  padding: 12px 0 0;
+  display: contents;
 }
 #bg-modal .modal-recs {
+  grid-column: 1;
+  grid-row: 2;
   display: block;
   min-width: 0;
   min-height: 0;
   max-height: 100%;
   overflow-y: auto;
+  margin: 0 0 18px 18px;
   padding: 14px 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -1278,10 +1242,52 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
   -webkit-box-orient: vertical;
 }
 #bg-modal .rec-info span { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; }
+#bg-modal .modal-main {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 18px 18px 0;
+}
+#bg-modal .modal-card:not(.has-recommendations) { grid-template-columns: minmax(0, 1fr); }
+#bg-modal .modal-card:not(.has-recommendations) .modal-main { grid-column: 1; }
+#bg-modal .modal-stage {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  height: auto;
+  aspect-ratio: auto;
+  margin: 0;
+  border-radius: 14px;
+}
+#bg-modal .modal-stage iframe {
+  position: absolute;
+  top: -50px;
+  left: 0;
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: calc(100% + 86px);
+  border: 0;
+  z-index: 1;
+  background: #09090b;
+}
+#bg-modal .modal-stage .stage-poster { z-index: 0; }
+#bg-modal .modal-stage .stage-loading { z-index: 2; pointer-events: none; }
+#bg-modal .modal-foot {
+  flex: 0 0 auto;
+  align-items: flex-start;
+  padding: 12px 0 0;
+}
 #bg-modal .modal-nav.prev { left: calc(18px + var(--rec-column) + 8px); }
 #bg-modal .modal-nav.next { right: 14px; }
 
-/* The generic form/embed dialog must never inherit the preview's grid sizing. */
+/* The generic form/embed dialog must never inherit preview grid sizing. */
 #dialog.modal { padding: 24px; place-items: center; }
 #dialog .dialog-card {
   display: block;
@@ -1351,17 +1357,20 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
 
   #bg-modal.modal { padding: 0; place-items: end center; }
   #bg-modal .modal-card {
+    display: flex;
+    flex-direction: column;
     width: 100%;
     height: auto;
     max-width: 100%;
     max-height: calc(100dvh - env(safe-area-inset-top, 0px));
-    border-radius: 18px 18px 0 0;
     overflow-y: auto;
+    border-radius: 18px 18px 0 0;
   }
   #bg-modal .modal-head {
     position: sticky;
     top: 0;
     z-index: 5;
+    flex: 0 0 auto;
     background: var(--surface);
     padding: 14px;
   }
@@ -1373,7 +1382,7 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
     min-height: 0;
     padding: 0 12px 16px;
   }
-  #bg-modal .modal-main { order: 1; flex: none; }
+  #bg-modal .modal-main { order: 1; flex: none; padding: 0; }
   #bg-modal .modal-stage {
     flex: none;
     width: 100%;
@@ -1387,6 +1396,7 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
     order: 2;
     max-height: none;
     overflow: visible;
+    margin: 0;
     padding: 14px;
     border-radius: 12px;
   }

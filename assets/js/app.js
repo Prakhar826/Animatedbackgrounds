@@ -1452,9 +1452,11 @@
   function renderModalRecs(b) {
     const box = $('#modal-recs');
     const layout = $('#modal-layout');
+    const card = $('#modal-card');
     if (!box || !S.bgs.length) {
       if (box) box.innerHTML = '';
       if (layout) layout.classList.remove('has-recommendations');
+      if (card) card.classList.remove('has-recommendations');
       return;
     }
     const picks = recommendationPicks(b, 6);
@@ -1464,6 +1466,7 @@
       return;
     }
     if (layout) layout.classList.add('has-recommendations');
+    if (card) card.classList.add('has-recommendations');
     box.innerHTML = `
       <div class="modal-recs-head">
         <div>
