@@ -442,26 +442,33 @@
     return Array.from({ length: count }, (_, i) => eligible[(start + i) % eligible.length]);
   }
   function recommendationPicks(background, limit = 6) {
-    const tags = new Set(background.tags || []);
-    const samePool = S.bgs.filter(x => x.id !== background.id && x.tags.some(t => tags.has(t)));
+    const all = Array.isArray(S.bgs) && S.bgs.length
+      ? S.bgs
+      : (Array.isArray(S.allBgs) ? S.allBgs : []);
+    const backgroundTags = new Set(Array.isArray(background && background.tags) ? background.tags : []);
+    const candidates = all.filter(x => x && x.id !== (background && background.id));
+    const samePool = candidates.filter(x =>
+      Array.isArray(x.tags) && x.tags.some(t => backgroundTags.has(t))
+    );
     const similar = shuffle(samePool).slice(0, Math.min(3, limit)).map(x => {
-      const tag = x.tags.find(t => tags.has(t));
+      const tag = (Array.isArray(x.tags) ? x.tags : []).find(t => backgroundTags.has(t));
       return { b: x, label: (S.catMap.get(tag) || {}).name || 'Similar' };
     });
-    const used = new Set([background.id, ...similar.map(x => x.b.id)]);
-    const lowPool = S.bgs.slice().sort((a, b) =>
+    const used = new Set([background && background.id, ...similar.map(x => x.b.id)]);
+    const lowPool = candidates.slice().sort((a, b) =>
       snapshotViewsOf(a.id) - snapshotViewsOf(b.id) ||
       snapshotLikesOf(a.id) - snapshotLikesOf(b.id) ||
-      a.idx - b.idx
-    ).slice(0, Math.max(limit, Math.ceil(S.bgs.length * 0.6)));
+      (a.idx || 0) - (b.idx || 0)
+    ).slice(0, Math.max(limit, Math.ceil(candidates.length * 0.6)));
     const hidden = shuffle(lowPool.filter(x => !used.has(x.id)))
       .slice(0, Math.min(3, limit - similar.length))
       .map(x => ({ b: x, label: 'Hidden gem' }));
     hidden.forEach(x => used.add(x.b.id));
-    const rest = shuffle(S.bgs.filter(x => !used.has(x.id)))
+    const rest = shuffle(candidates.filter(x => !used.has(x.id)))
       .slice(0, Math.max(0, limit - similar.length - hidden.length))
       .map(x => ({ b: x, label: 'Discover' }));
-    return shuffle([...similar, ...hidden, ...rest]);
+    const picks = shuffle([...similar, ...hidden, ...rest]);
+    return picks.length ? picks : shuffle(candidates).slice(0, limit).map(x => ({ b: x, label: 'Discover' }));
   }
   const gridShell = () => `<div class="bg-grid" id="grid"></div>
     <div class="load-more-wrap"><button class="btn btn-soft" id="load-more" hidden>Load more <i class="fa-solid fa-chevron-down"></i></button></div>
@@ -1421,6 +1428,7 @@
   }
   function fillModal(b) {
     const id = b.id;
+    renderModalRecs(b);
     $('#modal-title').textContent = b.name;
     $('#modal-sub').textContent = `by ${b.by} · ${S.modalIdx + 1} of ${S.modalList.length}`;
     const stage = $('#modal-stage');
@@ -1444,29 +1452,71 @@
     $('#modal-full').href = fullUrl(b);
     $('#modal-code').href = penUrl(b);
     refreshCounts(id);
-    renderModalRecs(b);
     const mc = $('#modal-card'); if (mc) mc.scrollTop = 0;
     countView(id); fetchLikes(id);
     if (window.gtag) gtag('event', 'view_item', { item_id: id });
   }
   function renderModalRecs(b) {
-    const box = $('#modal-recs');
-    const layout = $('#modal-layout');
     const card = $('#modal-card');
-    if (!box || !S.bgs.length) {
-      if (box) box.innerHTML = '';
-      if (layout) layout.classList.remove('has-recommendations');
-      if (card) card.classList.remove('has-recommendations');
-      return;
+    if (!card || !b) return;
+
+    // Rebuild the expected container if an older cached/generated HTML page is open.
+    let layout = $('#modal-layout');
+    let box = $('#modal-recs');
+    let main = layout ? $('.modal-main', layout) : null;
+    if (!layout) {
+      layout = document.createElement('div');
+      layout.id = 'modal-layout';
+      layout.className = 'modal-layout';
+      card.appendChild(layout);
     }
-    const picks = recommendationPicks(b, 6);
+    if (!box) {
+      box = document.createElement('section');
+      box.id = 'modal-recs';
+      box.className = 'modal-recs';
+      box.setAttribute('aria-label', 'Recommended backgrounds');
+      if (main) layout.insertBefore(box, main);
+      else layout.appendChild(box);
+    } else if (box.parentElement !== layout) {
+      layout.insertBefore(box, main || null);
+    }
+    if (!main) {
+      main = document.createElement('div');
+      main.className = 'modal-main';
+      layout.appendChild(main);
+    }
+
+    const stage = $('#modal-stage', card);
+    const foot = $('.modal-foot', card);
+    if (stage && !main.contains(stage)) main.appendChild(stage);
+    if (foot && !main.contains(foot)) main.appendChild(foot);
+
+    const all = Array.isArray(S.bgs) && S.bgs.length
+      ? S.bgs
+      : (Array.isArray(S.allBgs) ? S.allBgs : []);
+    let picks = [];
+    try {
+      picks = recommendationPicks(b, 6);
+    } catch (error) {
+      console.error('[Animated Backgrounds] Recommendation selection failed:', error);
+    }
+    if (!Array.isArray(picks) || !picks.length) {
+      picks = shuffle(all.filter(x => x && x.id !== b.id))
+        .slice(0, 6).map(x => ({ b: x, label: 'Discover' }));
+    }
+
+    card.classList.toggle('has-recommendations', picks.length > 0);
+    layout.classList.toggle('has-recommendations', picks.length > 0);
+
     if (!picks.length) {
-      box.innerHTML = '';
-      if (layout) layout.classList.remove('has-recommendations');
+      box.innerHTML = `
+        <div class="modal-recs-head">
+          <div><h3>More backgrounds</h3><p>Explore the rest of the collection</p></div>
+        </div>
+        <a class="modal-recs-all" href="/all/" data-link>Browse all backgrounds <i class="fa-solid fa-arrow-right"></i></a>`;
       return;
     }
-    if (layout) layout.classList.add('has-recommendations');
-    if (card) card.classList.add('has-recommendations');
+
     box.innerHTML = `
       <div class="modal-recs-head">
         <div>
@@ -1487,8 +1537,11 @@
               <span><i class="fa-regular fa-eye"></i> ${fmt(viewsOf(x.id))}</span>
             </span>
           </button>`).join('')}
-      </div>`;
-    checkImages(box);
+      </div>
+      <a class="modal-recs-all" href="/all/" data-link>Explore all backgrounds <i class="fa-solid fa-arrow-right"></i></a>`;
+    try { checkImages(box); }
+    catch (error) { console.warn('[Animated Backgrounds] Recommendation thumbnails could not be checked:', error); }
+
     $$('[data-rec-open]', box).forEach(btn => {
       btn.onclick = () => {
         const nextId = btn.dataset.recOpen;

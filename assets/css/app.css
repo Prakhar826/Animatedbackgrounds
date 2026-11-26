@@ -1160,15 +1160,13 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
 }
 .detail-recs-all:hover { color: var(--text); }
 
-/* ---------- Preview player: explicit desktop two-column grid ---------- */
+/* ---------- Preview player: robust nested sidebar/player grid ---------- */
 #bg-modal .modal-card {
-  --rec-column: clamp(220px, 25vw, 280px);
-  display: grid;
-  grid-template-columns: var(--rec-column) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  align-items: stretch;
-  width: min(1240px, calc(100vw - 48px));
-  height: min(760px, calc(100dvh - 48px));
+  --rec-column: clamp(230px, 24vw, 300px);
+  display: flex;
+  flex-direction: column;
+  width: min(1440px, calc(100vw - 48px));
+  height: min(780px, calc(100dvh - 48px));
   max-height: calc(100vh - 48px);
   min-width: 0;
   padding: 0;
@@ -1176,33 +1174,44 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
   border-radius: var(--radius-panel);
 }
 #bg-modal .modal-head {
-  grid-column: 1 / -1;
-  grid-row: 1;
+  flex: 0 0 auto;
   min-width: 0;
   align-items: center;
   padding: 16px 18px 12px;
 }
-/* The wrapper is only needed for the narrow-screen stack. On desktop its
-   children become direct grid items, so the sidebar cannot be pushed below. */
 #bg-modal .modal-layout {
-  display: contents;
+  display: grid;
+  grid-template-columns: var(--rec-column) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 18px 18px;
 }
 #bg-modal .modal-recs {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 1;
   display: block;
   min-width: 0;
   min-height: 0;
   max-height: 100%;
   overflow-y: auto;
-  margin: 0 0 18px 18px;
+  margin: 0;
   padding: 14px 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--bg);
+  color: var(--text);
   scrollbar-width: thin;
 }
-#bg-modal .modal-recs:empty { display: none; }
+#bg-modal .modal-recs:empty::before {
+  content: "Finding backgrounds for you…";
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
 #bg-modal .modal-recs-head {
   display: flex;
   align-items: flex-start;
@@ -1242,17 +1251,27 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
   -webkit-box-orient: vertical;
 }
 #bg-modal .rec-info span { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; }
+#bg-modal .modal-recs-all {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 9px 2px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 11.5px;
+  text-decoration: none;
+}
+#bg-modal .modal-recs-all:hover { color: var(--text); }
 #bg-modal .modal-main {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: 0 18px 18px 0;
+  padding: 0;
 }
-#bg-modal .modal-card:not(.has-recommendations) { grid-template-columns: minmax(0, 1fr); }
-#bg-modal .modal-card:not(.has-recommendations) .modal-main { grid-column: 1; }
 #bg-modal .modal-stage {
   position: relative;
   flex: 1 1 auto;
@@ -1284,7 +1303,7 @@ html:not(.dark) .bg-meta h3 { color: var(--text); }
   align-items: flex-start;
   padding: 12px 0 0;
 }
-#bg-modal .modal-nav.prev { left: calc(18px + var(--rec-column) + 8px); }
+#bg-modal .modal-nav.prev { left: calc(18px + var(--rec-column) + 24px); }
 #bg-modal .modal-nav.next { right: 14px; }
 
 /* The generic form/embed dialog must never inherit preview grid sizing. */
