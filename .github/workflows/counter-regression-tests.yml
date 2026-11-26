@@ -1,0 +1,33 @@
+name: Counter regression tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "assets/js/app.js"
+      - ".github/scripts/test-counter-system.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-counter-system:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check assets/js/app.js
+          node --check .github/scripts/test-counter-system.mjs
+
+      - name: Run counter regression tests
+        run: node .github/scripts/test-counter-system.mjs
