@@ -4,7 +4,7 @@ const API = "https://abacus.jasoncameron.dev";
 const NAMESPACE = "animatedbackgrounds.me";
 const BACKGROUNDS_FILE = "data/backgrounds.json";
 const STATS_FILE = "data/stats.json";
-const MIN_GAP_MS = 430; // 23 requests per 10 seconds, below Abacus's 30/IP limit.
+const MIN_GAP_MS = 430; // 23 requests per 10 seconds, below Abacus's 30/IP limit. Keep this conservative.
 let lastRequestAt = 0;
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
