@@ -43,7 +43,7 @@
     del(k) { try { sessionStorage.removeItem('ab:' + k); } catch (e) { } }
   };
 
-  /* Counter keys — MUST match scripts/fetch-stats.mjs */
+  /* Counter keys — MUST match .github/scripts/sync-background-stats.mjs */
   function djb2(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); }
   function ckey(prefix, id) {
     const k = (prefix + '-' + id).replace(/[^A-Za-z0-9_.-]/g, '-');
@@ -203,7 +203,6 @@
     S.live[id] = Object.assign({}, S.live[id], patch, { t: Date.now() });
     const keys = Object.keys(S.live);
     if (keys.length > 900) keys.sort((a, b) => S.live[a].t - S.live[b].t).slice(0, 300).forEach(k => delete S.live[k]);
-
   }
   function viewsOf(id) {
     const s = S.stats.b && S.stats.b[id], l = S.live[id];
