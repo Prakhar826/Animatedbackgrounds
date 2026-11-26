@@ -143,7 +143,7 @@
     if (dataPromise) return dataPromise;
     dataPromise = Promise.all([
       fetch('/data/backgrounds.json', { cache: 'no-store' }).then(r => r.json()),
-      fetch('/data/stats.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+      fetch('/data/stats.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).catch(() => ({})),
       fetch('/data/meta.json').then(r => r.ok ? r.json() : null).catch(() => null)
     ]).then(([d, st, meta]) => {
       S.stats = Object.assign({ b: {}, updated: 0 }, st);
