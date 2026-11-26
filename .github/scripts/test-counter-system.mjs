@@ -146,6 +146,21 @@ async function testLikeConfirmation() {
   assert.equal(failed.live["bg-fail"].l, 14);
 }
 
+function testCumulativeLikesNeverRegress() {
+  const start = app.indexOf("  function likesOf(id) {");
+  const end = app.indexOf("\n  const score =", start);
+  assert.ok(start >= 0 && end > start, "likesOf function is available for the regression test");
+  const context = {
+    S: { stats: { b: { "bg-1": [20, 9] }, updated: 999999 }, live: { "bg-1": { l: 12, t: 1 } } },
+    Likes: { has: () => false },
+    Math
+  };
+  vm.runInNewContext(app.slice(start, end) + "\nglobalThis.__likesOf = likesOf;", context);
+  assert.equal(context.__likesOf("bg-1"), 12, "newer live cumulative likes survive a newer snapshot timestamp");
+  context.S.live["bg-1"].l = 4;
+  assert.equal(context.__likesOf("bg-1"), 9, "a live value never lowers the shared cumulative count");
+}
+
 async function testStatsReaderRateLimit() {
   const retryStart = statsSync.indexOf("function retryDelay(response, attempt) {");
   const getStart = statsSync.indexOf("async function getCounter(key) {");
@@ -205,5 +220,6 @@ await testCounterClient();
 await testViewRetryState();
 await testLikeConfirmation();
 await testStatsReaderRateLimit();
+testCumulativeLikesNeverRegress();
 testBrowserConsistencyGuards();
-console.log("PASS: browser counter retries, failed-view recovery, confirmed-like state, cross-browser cache guards, service-worker freshness, and serialized stats reads.");
+console.log("PASS: browser counter retries, failed-view recovery, confirmed-like state, cross-browser cache guards, service-worker freshness, serialized stats reads, and cumulative-like monotonicity.");
