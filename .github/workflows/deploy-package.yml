@@ -143,25 +143,25 @@ jobs:
             const before = html;
 
             if (!html.includes('id="site-preloader"')) {
-              const body = html.match(/<body\\b[^>]*>/i);
+              const body = html.match(/<body\b[^>]*>/i);
               if (body) {
-                html = html.replace(body[0], body[0] + '\\n  ' + preloader);
+                html = html.replace(body[0], body[0] + '\n  ' + preloader);
                 preloaderAdded++;
               }
             }
 
             if (!html.includes('id="modal-layout"') && html.includes('id="bg-modal"')) {
-              const pattern = /([ \\t]*<div class="modal-stage" id="modal-stage"><\\/div>)([\\s\\S]*?)([ \\t]*<section class="modal-recs" id="modal-recs"[^>]*><\\/section>)/;
+              const pattern = /([ \t]*<div class="modal-stage" id="modal-stage"><\/div>)([\s\S]*?)([ \t]*<section class="modal-recs" id="modal-recs"[^>]*><\/section>)/;
               const match = html.match(pattern);
               if (!match) {
                 throw new Error('Could not locate preview modal structure in ' + path.relative(dist, file));
               }
               const [, stage, between, recommendations] = match;
-              const layout = '      <div class="modal-layout" id="modal-layout">\\n' +
-                '        ' + recommendations.trim() + '\\n' +
-                '        <div class="modal-main">\\n' +
-                stage + between + '\\n' +
-                '        </div>\\n' +
+              const layout = '      <div class="modal-layout" id="modal-layout">\n' +
+                '        ' + recommendations.trim() + '\n' +
+                '        <div class="modal-main">\n' +
+                stage + between + '\n' +
+                '        </div>\n' +
                 '      </div>';
               html = html.replace(pattern, layout);
               previewLayoutAdded++;
