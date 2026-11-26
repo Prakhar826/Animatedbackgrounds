@@ -55,6 +55,10 @@ jobs:
           if [ -f "$GITHUB_WORKSPACE/data/backgrounds.json" ]; then
             install -D "$GITHUB_WORKSPACE/data/backgrounds.json" "$SITE_SOURCE/data/backgrounds.json"
           fi
+          # Keep the latest shared likes/views snapshot when rebuilding from the seed archive.
+          if [ -f "$GITHUB_WORKSPACE/data/stats.json" ]; then
+            install -D "$GITHUB_WORKSPACE/data/stats.json" "$SITE_SOURCE/data/stats.json"
+          fi
           if [ -d "$GITHUB_WORKSPACE/assets/shots" ]; then
             mkdir -p "$SITE_SOURCE/assets/shots"
             cp -a "$GITHUB_WORKSPACE/assets/shots/." "$SITE_SOURCE/assets/shots/"
