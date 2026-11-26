@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: global-background-stats
+  group: animatedbackgrounds-main-writers
   cancel-in-progress: false
 
 jobs:
@@ -47,4 +47,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: refresh global background likes and views"
-          git push origin HEAD:main
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Could not push stats commit after three attempts."
+              exit 1
+            fi
+            sleep 2
+          done
