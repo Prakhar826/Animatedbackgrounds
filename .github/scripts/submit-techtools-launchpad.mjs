@@ -92,7 +92,17 @@ async function main() {
   }
 
   console.log("Directory submission accepted.");
-  console.log(JSON.stringify(body, null, 2));
+  function redact(value) {
+    if (Array.isArray(value)) return value.map(redact);
+    if (!value || typeof value !== "object") return value;
+    const clean = {};
+    for (const [key, child] of Object.entries(value)) {
+      if (/manage[_-]?(key|url|note)|token|secret/i.test(key)) continue;
+      clean[key] = redact(child);
+    }
+    return clean;
+  }
+  console.log(JSON.stringify(redact(body), null, 2));
 }
 
 main().catch((error) => stop(error?.stack || error?.message || String(error)));
