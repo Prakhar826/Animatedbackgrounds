@@ -36,6 +36,7 @@ async function testCounterClient() {
       return next;
     },
     Promise, Date, Math,
+    AbortSignal: { timeout: ms => ({ timeoutMs: ms }) },
     setTimeout: (fn, ms) => { delays.push(ms); fn(); return 1; }
   };
   vm.runInNewContext(`const COUNTER_API = "https://abacus.jasoncameron.dev"; const NS = "animatedbackgrounds.me";\n${counterSource}\nglobalThis.__Counter = Counter;`, context);
@@ -46,6 +47,7 @@ async function testCounterClient() {
   assert.equal(calls.length, 1);
   assert.match(calls[0].url, /hit\/animatedbackgrounds\.me\/v-test$/);
   assert.equal(calls[0].options.cache, "no-store");
+  assert.equal(calls[0].options.signal.timeoutMs, 20000, "counter requests have a finite timeout");
 
   responses.push(makeResponse(429, { error: "rate limited" }, { "Retry-After": "1800" }));
   responses.push(makeResponse(200, 8));
@@ -110,7 +112,10 @@ function makeLikesHarness(hitValues) {
   const block = extract("  const Likes = {", "\n  function updateNavCounts()");
   const context = {
     store,
-    Counter: { hit: async () => hitValues.shift() ?? null },
+    Counter: { hit: async () => {
+      const next = hitValues.shift() ?? null;
+      return typeof next === "function" ? next() : next;
+    } },
     ckey: (prefix, id) => prefix + "-" + id,
     setLive: (id, patch) => { live[id] = { ...(live[id] || {}), ...patch }; },
     refreshCounts: () => {},
@@ -119,6 +124,22 @@ function makeLikesHarness(hitValues) {
   };
   vm.runInNewContext(block + "\nglobalThis.__Likes = Likes;", context);
   return { Likes: context.__Likes, data, live };
+}
+
+async function testLikeRequestCoalescing() {
+  let resolveHit;
+  const pending = new Promise(resolve => { resolveHit = resolve; });
+  const harness = makeLikesHarness([() => pending]);
+  harness.Likes.toggle("bg-fast");
+  const first = harness.Likes.count("bg-fast");
+  const second = harness.Likes.count("bg-fast");
+
+  assert.equal(first, second, "rapid repeat like clicks share one in-flight request");
+  resolveHit(21);
+  assert.equal(await first, true);
+  assert.equal(await second, true);
+  assert.equal(harness.live["bg-fast"].l, 21);
+  assert.ok(harness.Likes.ever["bg-fast"]);
 }
 
 async function testLikeConfirmation() {
@@ -219,7 +240,8 @@ function testBrowserConsistencyGuards() {
 await testCounterClient();
 await testViewRetryState();
 await testLikeConfirmation();
+await testLikeRequestCoalescing();
 await testStatsReaderRateLimit();
 testCumulativeLikesNeverRegress();
 testBrowserConsistencyGuards();
-console.log("PASS: browser counter retries, failed-view recovery, confirmed-like state, cross-browser cache guards, service-worker freshness, serialized stats reads, and cumulative-like monotonicity.");
+console.log("PASS: browser counter retries, failed-view recovery, confirmed-like state, request timeouts and coalescing, cross-browser cache guards, service-worker freshness, serialized stats reads, and cumulative-like monotonicity.");
