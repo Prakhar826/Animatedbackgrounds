@@ -4,6 +4,7 @@ import vm from "node:vm";
 
 const app = fs.readFileSync("assets/js/app.js", "utf8");
 const sw = fs.readFileSync("sw.js", "utf8");
+const statsSync = fs.readFileSync(".github/scripts/sync-background-stats.mjs", "utf8");
 
 function extract(startMarker, endMarker) {
   const start = app.indexOf(startMarker);
@@ -145,6 +146,52 @@ async function testLikeConfirmation() {
   assert.equal(failed.live["bg-fail"].l, 14);
 }
 
+async function testStatsReaderRateLimit() {
+  const retryStart = statsSync.indexOf("function retryDelay(response, attempt) {");
+  const getStart = statsSync.indexOf("async function getCounter(key) {");
+  const mainStart = statsSync.indexOf("\n\nasync function main()", getStart);
+  assert.ok(retryStart >= 0 && getStart > retryStart && mainStart > getStart, "stats synchronizer exposes the expected rate-limited reader");
+
+  const retryBlock = statsSync.slice(retryStart, getStart);
+  const getBlock = statsSync.slice(getStart, mainStart);
+  let clock = 10000;
+  const starts = [];
+  const delays = [];
+  const responses = [
+    makeResponse(200, 4),
+    makeResponse(200, 6),
+    makeResponse(429, { error: "rate limited" }, { "Retry-After": "1500" }),
+    makeResponse(200, 7)
+  ];
+  const context = {
+    API: "https://abacus.jasoncameron.dev",
+    NAMESPACE: "animatedbackgrounds.me",
+    MIN_GAP_MS: 430,
+    lastRequestAt: 0,
+    Date: { now: () => clock },
+    Math,
+    AbortSignal: { timeout: () => ({}) },
+    sleep: async ms => { delays.push(ms); clock += ms; },
+    fetch: async () => {
+      starts.push(clock);
+      const response = responses.shift();
+      if (!response) throw new Error("Unexpected additional counter request");
+      return response;
+    }
+  };
+  vm.runInNewContext(`${retryBlock}\n${getBlock}\nglobalThis.__getCounter = getCounter;`, context);
+
+  assert.equal(await context.__getCounter("v-bg-1"), 4);
+  assert.equal(await context.__getCounter("l-bg-1"), 6);
+  assert.ok(starts[1] - starts[0] >= 430, "stats requests are spaced by at least 430 ms");
+
+  assert.equal(await context.__getCounter("v-bg-2"), 7, "explicit 429 is retried");
+  assert.ok(delays.some(ms => ms >= 1500), "stats reader respects Retry-After");
+
+  assert.doesNotMatch(statsSync, /Promise\.all\(\s*\[\s*getCounter/, "views and likes are not fetched concurrently");
+  assert.match(statsSync, /const views = await getCounter\([\s\S]*const likes = await getCounter\(/, "each pair of counters is awaited sequentially");
+}
+
 function testBrowserConsistencyGuards() {
   assert.match(app, /live:\s*\{\}/, "live counter cache is memory-only");
   assert.doesNotMatch(app, /store\.set\('live',\s*S\.live\)/, "global counter values are not persisted per browser");
@@ -156,5 +203,6 @@ function testBrowserConsistencyGuards() {
 await testCounterClient();
 await testViewRetryState();
 await testLikeConfirmation();
+await testStatsReaderRateLimit();
 testBrowserConsistencyGuards();
-console.log("PASS: Abacus request retries, failed-view recovery, confirmed-like state, cross-browser cache guards, and service-worker freshness.");
+console.log("PASS: browser counter retries, failed-view recovery, confirmed-like state, cross-browser cache guards, service-worker freshness, and serialized stats reads.");
