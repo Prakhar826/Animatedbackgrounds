@@ -16,7 +16,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: site-replacement
+  group: animatedbackgrounds-main-writers
   cancel-in-progress: false
 
 jobs:
@@ -132,7 +132,18 @@ jobs:
             git -C "$GITHUB_WORKSPACE" config user.name "github-actions[bot]"
             git -C "$GITHUB_WORKSPACE" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git -C "$GITHUB_WORKSPACE" commit -m "chore: replace legacy site with generated static build"
-            git -C "$GITHUB_WORKSPACE" push origin HEAD:main
+            for attempt in 1 2 3; do
+              git -C "$GITHUB_WORKSPACE" fetch origin main
+              git -C "$GITHUB_WORKSPACE" rebase origin/main
+              if git -C "$GITHUB_WORKSPACE" push origin HEAD:main; then
+                break
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                echo "Could not push deployment commit after three attempts."
+                exit 1
+              fi
+              sleep 2
+            done
           else
             echo "Repository already matches the generated static build."
           fi
