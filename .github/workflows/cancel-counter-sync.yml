@@ -1,0 +1,25 @@
+name: Stop overlapping counter snapshot runs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backlink-queue/cancel-counter-sync.json"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel the two overlapping snapshot runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for run_id in 45821505147 45822499650; do
+            gh api --silent --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" || true
+            echo "Requested cancellation of run ${run_id}."
+          done
