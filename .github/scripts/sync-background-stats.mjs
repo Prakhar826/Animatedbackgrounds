@@ -84,10 +84,10 @@ async function main() {
   console.log(`Refreshing global counters for ${ids.length} backgrounds (${ids.length * 2} reads).`);
   for (let index = 0; index < ids.length; index += 1) {
     const id = ids[index];
-    const [views, likes] = await Promise.all([
-      getCounter(`v-${id}`),
-      getCounter(`l-${id}`)
-    ]);
+    // Await each read separately. Promise.all would send two requests at
+    // the same instant and defeat the per-IP rate-limit spacing above.
+    const views = await getCounter(`v-${id}`);
+    const likes = await getCounter(`l-${id}`);
 
     if (views > 0 || likes > 0) next[id] = [views, likes];
 
