@@ -414,16 +414,53 @@
       S.cats.map(c => `<a class="chip${active === c.slug ? ' active' : ''}" href="/collection/${c.slug}/" data-link><i class="fa-solid ${c.icons[0]}"></i>${esc(c.name)} <small>${c.items.length}</small></a>`).join('');
   }
   const sortSelect = cur => `<select class="sort-select" id="sort-select" aria-label="Sort">
-      ${[['popular', 'Most popular'], ['liked', 'Most liked'], ['default', 'Default order'], ['az', 'A – Z'], ['shuffle', 'Shuffle']].map(([v, l]) => `<option value="${v}"${cur === v ? ' selected' : ''}>${l}</option>`).join('')}
+      ${[['views', 'Most viewed'], ['popular', 'Most popular'], ['liked', 'Most liked'], ['default', 'Default order'], ['az', 'A – Z'], ['shuffle', 'Shuffle']].map(([v, l]) => `<option value="${v}"${cur === v ? ' selected' : ''}>${l}</option>`).join('')}
     </select>`;
   function sortList(list, mode) {
     switch (mode) {
+      case 'views': return list.slice().sort((a, b) => snapshotViewsOf(b.id) - snapshotViewsOf(a.id) || snapshotLikesOf(b.id) - snapshotLikesOf(a.id) || a.idx - b.idx);
       case 'liked': return list.slice().sort((a, b) => snapshotLikesOf(b.id) - snapshotLikesOf(a.id) || score(b) - score(a));
       case 'default': return list.slice();
       case 'az': return list.slice().sort((a, b) => (a.title ? 0 : 1) - (b.title ? 0 : 1) || a.name.localeCompare(b.name));
       case 'shuffle': return shuffle(list);
       default: return list.slice().sort((a, b) => score(b) - score(a) || a.idx - b.idx);
     }
+  }
+  /* Rotate the least-viewed 60% of the library on a stable daily cycle. Every
+     visit on the same day sees the same batch, and the batch advances daily. */
+  function hiddenGemPicks(limit = 8) {
+    const pool = S.bgs.slice().sort((a, b) =>
+      snapshotViewsOf(a.id) - snapshotViewsOf(b.id) ||
+      snapshotLikesOf(a.id) - snapshotLikesOf(b.id) ||
+      a.idx - b.idx
+    );
+    const eligible = pool.slice(0, Math.min(pool.length, Math.max(limit, Math.ceil(pool.length * 0.6))));
+    if (eligible.length <= limit) return shuffle(eligible);
+    const day = Math.floor(Date.now() / 86400000);
+    const start = (day * limit) % eligible.length;
+    return shuffle(Array.from({ length: limit }, (_, i) => eligible[(start + i) % eligible.length]));
+  }
+  function recommendationPicks(background, limit = 6) {
+    const tags = new Set(background.tags || []);
+    const samePool = S.bgs.filter(x => x.id !== background.id && x.tags.some(t => tags.has(t)));
+    const similar = shuffle(samePool).slice(0, Math.min(3, limit)).map(x => {
+      const tag = x.tags.find(t => tags.has(t));
+      return { b: x, label: (S.catMap.get(tag) || {}).name || 'Similar' };
+    });
+    const used = new Set([background.id, ...similar.map(x => x.b.id)]);
+    const lowPool = S.bgs.slice().sort((a, b) =>
+      snapshotViewsOf(a.id) - snapshotViewsOf(b.id) ||
+      snapshotLikesOf(a.id) - snapshotLikesOf(b.id) ||
+      a.idx - b.idx
+    ).slice(0, Math.max(limit, Math.ceil(S.bgs.length * 0.6)));
+    const hidden = shuffle(lowPool.filter(x => !used.has(x.id)))
+      .slice(0, Math.min(3, limit - similar.length))
+      .map(x => ({ b: x, label: 'Hidden gem' }));
+    hidden.forEach(x => used.add(x.b.id));
+    const rest = shuffle(S.bgs.filter(x => !used.has(x.id)))
+      .slice(0, Math.max(0, limit - similar.length - hidden.length))
+      .map(x => ({ b: x, label: 'Discover' }));
+    return shuffle([...similar, ...hidden, ...rest]);
   }
   const gridShell = () => `<div class="bg-grid" id="grid"></div>
     <div class="load-more-wrap"><button class="btn btn-soft" id="load-more" hidden>Load more <i class="fa-solid fa-chevron-down"></i></button></div>
@@ -478,9 +515,14 @@
       </div>`;
   }
 
-  function viewHome() {
+  function viewHome(_, q = new URLSearchParams()) {
     setTitle(null);
+    const exploreSort = q.get('sort') || 'views';
     const popular = sortList(S.bgs, 'popular').slice(0, 9);
+    const gems = hiddenGemPicks(8);
+    const hiddenGemHTML = '<section class="section hidden-gems-section" id="hidden-gems">' +
+      '<div class="section-head"><div><h2><i class="fa-solid fa-wand-magic-sparkles"></i> Hidden gems</h2><p>A daily rotation of lesser-seen backgrounds from the library</p></div><a class="see-all" href="/random/" data-link>Explore random <i class="fa-solid fa-arrow-right"></i></a></div>' +
+      '<div class="bg-grid">' + gems.map(cardHTML).join('') + '</div></section>';
     const favs = Likes.list.map(id => S.byId.get(id)).filter(b => b && !store.get('removed', []).includes(b.id)).slice(0, 6);
     view().innerHTML = `
       ${heroHTML()}
@@ -488,6 +530,8 @@
       <section class="section" id="trending">
         <div class="bg-grid">${popular.map(cardHTML).join('')}</div>
       </section>
+
+      ${hiddenGemHTML}
 
       ${newsletterHTML('/')}
 
@@ -497,11 +541,11 @@
         <div class="bg-grid">${favs.map(cardHTML).join('')}</div></section>` : ''}
 
       <section class="section" id="explore">
-        <div class="section-head"><div><h2>Explore everything</h2><p>Scroll to load more backgrounds</p></div>${sortSelect('default')}</div>
+        <div class="section-head"><div><h2>Explore everything</h2><p>Most viewed backgrounds first · lower view counts follow</p></div>${sortSelect(exploreSort)}</div>
         ${gridShell()}
       </section>`;
     checkImages(view());
-    startGrid(S.bgs.slice());
+    startGrid(sortList(S.bgs, exploreSort));
     bindSort(S.bgs);
     bindNewsletter(view());
     scheduleSubscribePopup();
@@ -598,8 +642,7 @@
     const b = S.byId.get(id);
     if (!b) return viewNotFound();
     setTitle(b.name, `${b.name} by ${b.by} — free animated background. Preview, like and get the code.`);
-    const related = sortList(S.bgs.filter(x => x.id !== id && x.tags.some(t => b.tags.includes(t))), 'popular').slice(0, 12);
-    const more = related.length ? related : shuffle(S.bgs.filter(x => x.id !== id)).slice(0, 12);
+    const recommendations = recommendationPicks(b, 6);
     const liked = Likes.has(id);
     view().innerHTML = `
       <nav class="breadcrumbs"><a href="/" data-link>Home</a><i class="fa-solid fa-chevron-right"></i>${b.tags[0] ? `<a href="/collection/${b.tags[0]}/" data-link>${esc(S.catMap.get(b.tags[0]).name)}</a><i class="fa-solid fa-chevron-right"></i>` : `<a href="/all/" data-link>All</a><i class="fa-solid fa-chevron-right"></i>`}<span>${esc(b.name)}</span></nav>
@@ -626,7 +669,30 @@
           <div class="tag-panel" id="detail-tag-panel" hidden></div>
         </div>
       </section>
-      <section class="section"><div class="section-head"><div><h2>More like this</h2></div></div><div class="bg-grid">${more.map(cardHTML).join('')}</div></section>`;
+`;
+    const detailSection = view().querySelector('#detail-stage')?.closest('.section');
+    const sectionHead = detailSection && detailSection.querySelector('.section-head');
+    const detailStage = detailSection && detailSection.querySelector('#detail-stage');
+    const detailFoot = detailSection && detailSection.querySelector('.modal-foot');
+    if (detailSection && sectionHead && detailStage && detailFoot) {
+      const aside = document.createElement('aside');
+      aside.className = 'detail-recommendations';
+      aside.setAttribute('aria-label', 'Recommended backgrounds');
+      aside.innerHTML = '<div class="detail-recs-heading"><h2>Keep exploring</h2><p>Similar styles and hidden gems</p></div>' +
+        '<div class="detail-rec-list">' + recommendations.map(({ b: x, label }) =>
+          '<a class="detail-rec-card" href="/background/' + esc(x.id) + '/" data-link>' +
+            '<span class="detail-rec-thumb">' + shotHTML(x, { alt: x.name }) + '<span class="detail-rec-badge">' + esc(label) + '</span></span>' +
+            '<span class="detail-rec-info"><strong title="' + esc(x.name) + '">' + esc(x.name) + '</strong><small><i class="fa-regular fa-eye"></i> ' + fmt(snapshotViewsOf(x.id)) + ' views</small></span>' +
+          '</a>'
+        ).join('') + '</div><a class="detail-recs-all" href="/random/" data-link>Discover more <i class="fa-solid fa-arrow-right"></i></a>';
+      const main = document.createElement('div');
+      main.className = 'background-detail-main';
+      main.append(sectionHead, detailStage, detailFoot);
+      const layout = document.createElement('div');
+      layout.className = 'background-detail-layout';
+      layout.append(aside, main);
+      detailSection.appendChild(layout);
+    }
     checkImages(view());
     countView(id); fetchLikes(id);
   }
@@ -639,9 +705,7 @@
      NEWSLETTER  (same endpoint the blog uses; a real cross-origin form
      post into a hidden iframe, so no CORS gymnastics are needed)
      ===================================================================== */
-  const isSubscribed = () => !!store.get('subscribed', false);
   function newsletterHTML(source = '/', inPopup = false) {
-    if (isSubscribed()) return '';
     const id = 'nl-' + (source.replace(/\W/g, '') || 'home') + (inPopup ? '-pop' : '');
     return `<form class="subscribe" data-newsletter${inPopup ? ' data-nl-popup="1"' : ''} action="${esc(NEWSLETTER.action || BLOG + '_ob/subscribe')}" method="post" enctype="multipart/form-data" target="nl-sink">
       ${inPopup ? '' : '<div class="subscribe-copy"><h2><i class="fa-regular fa-envelope" style="color:var(--text-2)"></i> Get new backgrounds &amp; guides by email</h2><p>One short email when something new lands. No spam, unsubscribe anytime.</p></div>'}
@@ -657,10 +721,6 @@
     </form>`;
   }
   function bindNewsletter(root = document) {
-    if (isSubscribed()) {
-      $$('[data-newsletter]', root).forEach(f => f.remove());
-      return;
-    }
     $$('[data-newsletter]', root).forEach(form => {
       if (form.dataset.bound) return;
       form.dataset.bound = '1';
@@ -673,15 +733,14 @@
         }
         if (status) { status.textContent = 'Subscribing…'; status.className = 'subscribe-status'; }
         form.classList.add('is-done');
-        store.set('subscribed', true);
+        session.set('nl-popup-seen', '1');
+        clearTimeout(nlPopTimer);
         setTimeout(() => {
-          if (status) { status.textContent = '✓ Subscribed! Thanks for joining.'; status.className = 'subscribe-status ok'; }
+          if (status) { status.textContent = 'Request submitted. Check your inbox for a confirmation email.'; status.className = 'subscribe-status ok'; }
           try { form.reset(); } catch (e) { }
           if (window.gtag) gtag('event', 'newsletter_signup', { source: form.querySelector('input[name="source"]')?.value || '/' });
-          setTimeout(() => {
-            if (form.dataset.nlPopup) closeDialog();
-            $$('[data-newsletter]').forEach(f => f.remove());
-          }, 1400);
+          if (form.dataset.nlPopup) closeDialog();
+          else form.classList.remove('is-done');
         }, 1200);
       });
     });
@@ -689,11 +748,11 @@
   let nlPopTimer = null;
   function scheduleSubscribePopup() {
     clearTimeout(nlPopTimer);
-    if (isSubscribed() || session.get('nl-popup-seen')) return;
+    if (session.get('nl-popup-seen')) return;
     nlPopTimer = setTimeout(() => {
       const onHome = location.pathname === '/' || location.pathname === '/index.html';
       const dlg = $('#dialog');
-      if (!onHome || isSubscribed() || session.get('nl-popup-seen') || S.modalOpen || (dlg && !dlg.hidden)) return;
+      if (!onHome || session.get('nl-popup-seen') || S.modalOpen || (dlg && !dlg.hidden)) return;
       session.set('nl-popup-seen', '1');
       openDialog(`<div class="nl-popup">
         <span class="nl-pop-badge"><i class="fa-regular fa-envelope"></i> Free updates</span>
@@ -1391,15 +1450,7 @@
   function renderModalRecs(b) {
     const box = $('#modal-recs');
     if (!box || !S.bgs.length) return;
-    const tagSet = new Set(b.tags || []);
-    const same = shuffle(S.bgs.filter(x => x.id !== b.id && x.tags.some(t => tagSet.has(t)))).slice(0, 4);
-    const used = new Set([b.id, ...same.map(x => x.id)]);
-    const randNeed = Math.max(2, 6 - same.length);
-    const rand = shuffle(S.bgs.filter(x => !used.has(x.id))).slice(0, randNeed);
-    const picks = [
-      ...same.map(x => ({ b: x, label: (S.catMap.get(x.tags.find(t => tagSet.has(t))) || {}).name || 'Similar' })),
-      ...rand.map(x => ({ b: x, label: 'Discover' }))
-    ];
+    const picks = recommendationPicks(b, 6);
     if (!picks.length) { box.innerHTML = ''; return; }
     box.innerHTML = `
       <div class="modal-recs-head">
@@ -2475,7 +2526,6 @@
     }).catch(() => {});
   }
   initNewsletterSink();
-  if (isSubscribed()) $$('[data-newsletter]').forEach(f => f.remove());
   const route = document.body.dataset.route;
   if (route === 'spa') {
     history.replaceState({ spa: true }, '', location.href);
