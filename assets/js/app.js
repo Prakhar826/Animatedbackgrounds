@@ -220,7 +220,17 @@
     // snapshot taken mid-scan cannot temporarily hide a newer live increment.
     return l && l.l != null ? Math.max(sl, l.l) : sl;
   }
-  const score = b => viewsOf(b.id) + likesOf(b.id) * 8 + (b.featured ? 3 : 0) + (Likes.has(b.id) ? 2 : 0);
+  // Grid cards and popularity sorting use the same shared snapshot in every
+  // browser. Live API values are shown inside an opened preview/detail view.
+  function snapshotViewsOf(id) {
+    const s = S.stats.b && S.stats.b[id];
+    return s ? s[0] : 0;
+  }
+  function snapshotLikesOf(id) {
+    const s = S.stats.b && S.stats.b[id];
+    return s ? s[1] : 0;
+  }
+  const score = b => snapshotViewsOf(b.id) + snapshotLikesOf(b.id) * 8 + (b.featured ? 3 : 0);
 
   /* ---------------- likes (localStorage) ---------------- */
   const Likes = {
@@ -274,14 +284,20 @@
       btn.classList.toggle('liked', liked);
       btn.setAttribute('aria-pressed', liked);
       const i = btn.querySelector('i'); if (i) i.className = (liked ? 'fa-solid' : 'fa-regular') + ' fa-heart';
-      const sp = btn.querySelector('span'); if (sp && !btn.classList.contains('like-big')) sp.textContent = n ? fmt(n) : '';
+      const sp = btn.querySelector('span');
+      const displayedLikes = btn.closest('.bg-card') ? snapshotLikesOf(id) : n;
+      if (sp && !btn.classList.contains('like-big')) sp.textContent = displayedLikes ? fmt(displayedLikes) : '';
       if (btn.classList.contains('like-big') && sp) sp.textContent = liked ? 'Liked' : 'Like';
     });
     $$(`[data-like-icon="${CSS.escape(id)}"]`).forEach(ic => {
       ic.className = (liked ? 'fa-solid is-liked' : 'fa-regular') + ' fa-heart';
     });
-    $$(`[data-views="${CSS.escape(id)}"]`).forEach(el => el.textContent = fmt(viewsOf(id)));
-    $$(`[data-likes="${CSS.escape(id)}"]`).forEach(el => el.textContent = fmt(likesOf(id)));
+    $(`[data-views="${CSS.escape(id)}"]`).forEach(el => {
+      el.textContent = fmt(el.closest('.bg-card') ? snapshotViewsOf(id) : viewsOf(id));
+    });
+    $(`[data-likes="${CSS.escape(id)}"]`).forEach(el => {
+      el.textContent = fmt(el.closest('.bg-card') ? snapshotLikesOf(id) : likesOf(id));
+    });
   }
   function toggleLike(id, btn = null) {
     const on = Likes.toggle(id);
@@ -344,7 +360,7 @@
 
   /* ---------------- templates ---------------- */
   function cardHTML(b) {
-    const liked = Likes.has(b.id), n = likesOf(b.id), v = viewsOf(b.id);
+    const liked = Likes.has(b.id), n = snapshotLikesOf(b.id), v = snapshotViewsOf(b.id);
     const hot = v >= 500 || n >= 25;
     return `<article class="bg-card" data-id="${esc(b.id)}">
       <a class="bg-thumb" href="/background/${esc(b.id)}/" data-open="${esc(b.id)}" aria-label="Preview ${esc(b.name)}">
@@ -402,7 +418,7 @@
     </select>`;
   function sortList(list, mode) {
     switch (mode) {
-      case 'liked': return list.slice().sort((a, b) => likesOf(b.id) - likesOf(a.id) || score(b) - score(a));
+      case 'liked': return list.slice().sort((a, b) => snapshotLikesOf(b.id) - snapshotLikesOf(a.id) || score(b) - score(a));
       case 'default': return list.slice();
       case 'az': return list.slice().sort((a, b) => (a.title ? 0 : 1) - (b.title ? 0 : 1) || a.name.localeCompare(b.name));
       case 'shuffle': return shuffle(list);
