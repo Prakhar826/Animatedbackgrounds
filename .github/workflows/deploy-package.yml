@@ -28,6 +28,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fast-forward to the latest main before building
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git reset --hard origin/main
+
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -127,7 +134,7 @@ jobs:
             --exclude='/assets/css/app.css' \
             --exclude='/sw.js' \
             "$RUNNER_TEMP/animatedbackgrounds-site/dist/" "$GITHUB_WORKSPACE/"
-          CACHE_VERSION="${GITHUB_SHA:0:12}"
+          CACHE_VERSION="$(git -C "$GITHUB_WORKSPACE" rev-parse --short=12 HEAD)"
           find "$GITHUB_WORKSPACE" -type f -name '*.html' ! -path "$GITHUB_WORKSPACE/.git/*" -print0 | while IFS= read -r -d '' html; do
             sed -i -E "s#(/assets/js/app\\.js\\?v=)[^\"' ]+#\\1${CACHE_VERSION}#g; s#(/assets/css/app\\.css\\?v=)[^\"' ]+#\\1${CACHE_VERSION}#g" "$html"
           done
