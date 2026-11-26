@@ -79,7 +79,11 @@
           const gap = MIN_GAP_MS - (Date.now() - lastRequestAt);
           if (gap > 0) await sleep(gap);
           lastRequestAt = Date.now();
-          return fetch(`${COUNTER_API}/${path}`, { cache: 'no-store' });
+          const options = { cache: 'no-store' };
+          if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+            options.signal = AbortSignal.timeout(20000);
+          }
+          return fetch(`${COUNTER_API}/${path}`, options);
         });
         queue = task.then(() => undefined, () => undefined);
 
@@ -222,7 +226,7 @@
   const Likes = {
     list: store.get('likes', []),
     ever: store.get('likedEver', {}),
-    inflight: new Set(),
+    inflight: new Map(),
     has(id) { return this.list.includes(id); },
     toggle(id) {
       const on = !this.has(id);
@@ -236,21 +240,27 @@
       updateNavCounts();
       return on;
     },
-    async count(id) {
-      if (this.ever[id]) return true;
-      if (this.inflight.has(id)) return false;
-      this.inflight.add(id);
-      const value = await Counter.hit(ckey('l', id));
-      this.inflight.delete(id);
+    count(id) {
+      if (this.ever[id]) return Promise.resolve(true);
+      if (this.inflight.has(id)) return this.inflight.get(id);
 
-      // Never mark a like as counted until Abacus confirms the increment.
-      // This is the key fix for likes that previously failed silently forever.
-      if (value == null) return false;
-      this.ever[id] = Date.now();
-      store.set('likedEver', this.ever);
-      setLive(id, { l: value });
-      refreshCounts(id);
-      return true;
+      // Coalesce rapid taps across the same page into one pending API call.
+      const request = (async () => {
+        let value = null;
+        try { value = await Counter.hit(ckey('l', id)); } catch (error) { value = null; }
+
+        // Never mark a like as counted until Abacus confirms the increment.
+        // A failed request can be retried on a later like action.
+        if (value == null) return false;
+        this.ever[id] = Date.now();
+        store.set('likedEver', this.ever);
+        setLive(id, { l: value });
+        refreshCounts(id);
+        return true;
+      })().finally(() => this.inflight.delete(id));
+
+      this.inflight.set(id, request);
+      return request;
     },
     clear() { this.list = []; store.set('likes', []); updateNavCounts(); }
   };
