@@ -1,0 +1,24 @@
+name: Remove exposed directory submission log
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backlink-queue/delete-exposed-run.json"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  delete-log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove the public run log containing the listing management key
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_RUN_ID: "45801844031"
+        run: |
+          set -euo pipefail
+          gh api --silent --method DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${TARGET_RUN_ID}"
+          echo "Removed the public log for the directory submission run."
