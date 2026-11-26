@@ -426,19 +426,20 @@
       default: return list.slice().sort((a, b) => score(b) - score(a) || a.idx - b.idx);
     }
   }
-  /* Rotate the least-viewed 60% of the library on a stable daily cycle. Every
-     visit on the same day sees the same batch, and the batch advances daily. */
-  function hiddenGemPicks(limit = 8) {
-    const pool = S.bgs.slice().sort((a, b) =>
+  /* Rotate the least-viewed 60% of the library in a stable daily cycle.
+     Keep the order deterministic so the same three picks remain visible all day. */
+  function hiddenGemPicks(limit = 3, excludeIds = new Set()) {
+    const pool = S.bgs.filter(b => !excludeIds.has(b.id)).slice().sort((a, b) =>
       snapshotViewsOf(a.id) - snapshotViewsOf(b.id) ||
       snapshotLikesOf(a.id) - snapshotLikesOf(b.id) ||
       a.idx - b.idx
     );
-    const eligible = pool.slice(0, Math.min(pool.length, Math.max(limit, Math.ceil(pool.length * 0.6))));
-    if (eligible.length <= limit) return shuffle(eligible);
+    const count = Math.min(Math.max(0, limit), pool.length);
+    const eligible = pool.slice(0, Math.min(pool.length, Math.max(count, Math.ceil(pool.length * 0.6))));
+    if (eligible.length <= count) return eligible.slice(0, count);
     const day = Math.floor(Date.now() / 86400000);
-    const start = (day * limit) % eligible.length;
-    return shuffle(Array.from({ length: limit }, (_, i) => eligible[(start + i) % eligible.length]));
+    const start = (day * count) % eligible.length;
+    return Array.from({ length: count }, (_, i) => eligible[(start + i) % eligible.length]);
   }
   function recommendationPicks(background, limit = 6) {
     const tags = new Set(background.tags || []);
@@ -519,11 +520,11 @@
     setTitle(null);
     const exploreSort = q.get('sort') || 'views';
     const popular = sortList(S.bgs, 'popular').slice(0, 9);
-    const gems = hiddenGemPicks(8);
-    const hiddenGemHTML = '<section class="section hidden-gems-section" id="hidden-gems">' +
-      '<div class="section-head"><div><h2><i class="fa-solid fa-wand-magic-sparkles"></i> Hidden gems</h2><p>A daily rotation of lesser-seen backgrounds from the library</p></div><a class="see-all" href="/random/" data-link>Explore random <i class="fa-solid fa-arrow-right"></i></a></div>' +
-      '<div class="bg-grid">' + gems.map(cardHTML).join('') + '</div></section>';
     const favs = Likes.list.map(id => S.byId.get(id)).filter(b => b && !store.get('removed', []).includes(b.id)).slice(0, 6);
+    const gems = hiddenGemPicks(3, new Set(favs.map(b => b.id)));
+    const hiddenGemHTML = '<section class="section hidden-gems-section" id="hidden-gems">' +
+      '<div class="section-head"><div><h2><i class="fa-solid fa-wand-magic-sparkles"></i> Hidden gems</h2><p>Three rotating picks from the quieter corners of the library</p></div><a class="see-all" href="/random/" data-link>Explore random <i class="fa-solid fa-arrow-right"></i></a></div>' +
+      '<div class="bg-grid">' + gems.map(cardHTML).join('') + '</div></section>';
     view().innerHTML = `
       ${heroHTML()}
 
@@ -531,14 +532,13 @@
         <div class="bg-grid">${popular.map(cardHTML).join('')}</div>
       </section>
 
-      ${hiddenGemHTML}
-
       ${newsletterHTML('/')}
-
 
       ${favs.length ? `<section class="section" id="your-favorites">
         <div class="section-head"><div><h2><i class="fa-solid fa-heart" style="color:var(--heart)"></i> Your favorites</h2><p>Saved on this device</p></div><a class="see-all" href="/favorites/" data-link>All favorites <i class="fa-solid fa-arrow-right"></i></a></div>
         <div class="bg-grid">${favs.map(cardHTML).join('')}</div></section>` : ''}
+
+      ${hiddenGemHTML}
 
       <section class="section" id="explore">
         <div class="section-head"><div><h2>Explore everything</h2><p>Most viewed backgrounds first · lower view counts follow</p></div>${sortSelect(exploreSort)}</div>
@@ -761,7 +761,9 @@
         ${newsletterHTML('home-popup', true)}
         <div class="nl-pop-foot"><button type="button" class="btn btn-ghost btn-sm" data-close>Maybe later</button></div>
       </div>`);
-      bindNewsletter($('#dialog-body'));
+      const dialogBody = $('#dialog-body');
+      if (dialogBody) dialogBody.classList.add('newsletter-dialog');
+      bindNewsletter(dialogBody || $('#dialog-body'));
     }, 6500);
   }
   function initNewsletterSink() {
@@ -1449,9 +1451,19 @@
   }
   function renderModalRecs(b) {
     const box = $('#modal-recs');
-    if (!box || !S.bgs.length) return;
+    const layout = $('#modal-layout');
+    if (!box || !S.bgs.length) {
+      if (box) box.innerHTML = '';
+      if (layout) layout.classList.remove('has-recommendations');
+      return;
+    }
     const picks = recommendationPicks(b, 6);
-    if (!picks.length) { box.innerHTML = ''; return; }
+    if (!picks.length) {
+      box.innerHTML = '';
+      if (layout) layout.classList.remove('has-recommendations');
+      return;
+    }
+    if (layout) layout.classList.add('has-recommendations');
     box.innerHTML = `
       <div class="modal-recs-head">
         <div>
@@ -1462,7 +1474,7 @@
       </div>
       <div class="modal-recs-grid">
         ${picks.map(({ b: x, label }) => `
-          <button type="button" class="rec-card" data-rec-open="${esc(x.id)}">
+          <button type="button" class="rec-card" data-rec-open="${esc(x.id)}" aria-label="Preview ${esc(x.name)}">
             <span class="rec-thumb">
               ${shotHTML(x, { alt: x.name })}
               <span class="rec-badge">${esc(label)}</span>
@@ -1504,10 +1516,18 @@
 
   /* ---------------- dialogs ---------------- */
   function openDialog(html) {
-    $('#dialog-body').innerHTML = html; $('#dialog').hidden = false;
+    const body = $('#dialog-body');
+    if (!body) return;
+    body.classList.remove('newsletter-dialog');
+    body.innerHTML = html;
+    $('#dialog').hidden = false;
     const f = $('#dialog-body input, #dialog-body textarea, #dialog-body button'); if (f) setTimeout(() => f.focus(), 30);
   }
-  const closeDialog = () => { $('#dialog').hidden = true; $('#dialog-body').innerHTML = ''; };
+  const closeDialog = () => {
+    const body = $('#dialog-body');
+    $('#dialog').hidden = true;
+    if (body) { body.innerHTML = ''; body.classList.remove('newsletter-dialog'); }
+  };
 
   function embedDialog(id) {
     const b = S.byId.get(id); if (!b) return;
@@ -2453,6 +2473,14 @@
     if (open) paint(); else login();
   }
 
+  function hideSitePreloader() {
+    const loader = $('#site-preloader');
+    if (!loader || loader.dataset.dismissed === '1') return;
+    loader.dataset.dismissed = '1';
+    loader.classList.add('is-hidden');
+    window.setTimeout(() => loader.remove(), 420);
+  }
+
   /* ---------------- init chrome (every page) ---------------- */
   function initChrome() {
     applyTheme(); applyDensity(); updateNavCounts();
@@ -2529,11 +2557,16 @@
   const route = document.body.dataset.route;
   if (route === 'spa') {
     history.replaceState({ spa: true }, '', location.href);
-    render(location.pathname + location.search, false);
+    const loaderFailsafe = window.setTimeout(hideSitePreloader, 12000);
+    render(location.pathname + location.search, false)
+      .catch(error => { console.error('Initial gallery render failed:', error); })
+      .finally(() => { window.clearTimeout(loaderFailsafe); hideSitePreloader(); });
   } else if (route === 'admin') {
     initAdmin();
+    hideSitePreloader();
   } else {
     bindNewsletter(document);
+    hideSitePreloader();
   }
   initCarbon();
 })();
