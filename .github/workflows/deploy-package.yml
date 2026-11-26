@@ -114,6 +114,69 @@ jobs:
           }
           console.log('Applied custom screenshots to ' + updated + ' generated HTML files.');
           NODE
+      - name: Patch generated HTML with the preview sidebar and first-load animation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/animatedbackgrounds-site"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+
+          const dist = path.resolve('dist');
+          const preloader = "<div class=\"site-preloader\" id=\"site-preloader\" role=\"status\" aria-live=\"polite\">\n  <div class=\"preloader-mark\" aria-hidden=\"true\">\n    <span class=\"preloader-ring\"></span>\n    <img src=\"/assets/icons/android-chrome-192x192.png\" alt=\"\" width=\"36\" height=\"36\">\n  </div>\n  <strong class=\"preloader-brand\">Animated Backgrounds</strong>\n  <span class=\"preloader-caption\">Preparing your gallery…</span>\n  <span class=\"preloader-progress\" aria-hidden=\"true\"><span></span></span>\n</div>\n<noscript><style>.site-preloader{display:none!important}</style></noscript>";
+
+          const htmlFiles = [];
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) walk(full);
+              else if (entry.isFile() && entry.name.endsWith('.html')) htmlFiles.push(full);
+            }
+          }
+          walk(dist);
+
+          let preloaderAdded = 0;
+          let previewLayoutAdded = 0;
+          for (const file of htmlFiles) {
+            let html = fs.readFileSync(file, 'utf8');
+            const before = html;
+
+            if (!html.includes('id="site-preloader"')) {
+              const body = html.match(/<body\\b[^>]*>/i);
+              if (body) {
+                html = html.replace(body[0], body[0] + '\\n  ' + preloader);
+                preloaderAdded++;
+              }
+            }
+
+            if (!html.includes('id="modal-layout"') && html.includes('id="bg-modal"')) {
+              const pattern = /([ \\t]*<div class="modal-stage" id="modal-stage"><\\/div>)([\\s\\S]*?)([ \\t]*<section class="modal-recs" id="modal-recs"[^>]*><\\/section>)/;
+              const match = html.match(pattern);
+              if (!match) {
+                throw new Error('Could not locate preview modal structure in ' + path.relative(dist, file));
+              }
+              const [, stage, between, recommendations] = match;
+              const layout = '      <div class="modal-layout" id="modal-layout">\\n' +
+                '        ' + recommendations.trim() + '\\n' +
+                '        <div class="modal-main">\\n' +
+                stage + between + '\\n' +
+                '        </div>\\n' +
+                '      </div>';
+              html = html.replace(pattern, layout);
+              previewLayoutAdded++;
+            }
+
+            if (html !== before) fs.writeFileSync(file, html);
+          }
+
+          console.log('Added first-load animation to ' + preloaderAdded + ' HTML pages.');
+          console.log('Added explicit preview/sidebar layout to ' + previewLayoutAdded + ' HTML pages.');
+          if (!preloaderAdded && !previewLayoutAdded) {
+            console.log('Generated HTML already contains the required layout.');
+          }
+          NODE
+
           test -f dist/index.html
           test -f dist/.nojekyll
           test -f dist/CNAME
