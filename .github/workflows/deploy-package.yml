@@ -202,18 +202,18 @@ jobs:
             }
 
             let html = fs.readFileSync(file, 'utf8');
-            const robotsMeta = /<meta\\b(?=[^>]*\\bname\\s*=\\s*["']robots["'])[^>]*>/i;
+            const robotsMeta = /<meta\b(?=[^>]*\bname\s*=\s*["']robots["'])[^>]*>/i;
             if (robotsMeta.test(html)) {
               html = html.replace(robotsMeta, (tag) => {
-                const content = /\\bcontent\\s*=\\s*(["'])[^"']*\\1/i;
+                const content = /\bcontent\s*=\s*(["'])[^"']*\1/i;
                 if (content.test(tag)) return tag.replace(content, 'content="noindex, follow"');
-                return tag.replace(/\\s*\\/?>(?=$)/, ' content="noindex, follow">');
+                return tag.replace(/\s*\/?>$/, ' content="noindex, follow">');
               });
             } else {
-              if (!/<\\/head>/i.test(html)) {
+              if (!/<\/head>/i.test(html)) {
                 throw new Error('Could not find </head> in ' + relative);
               }
-              html = html.replace(/<\\/head>/i, '  <meta name="robots" content="noindex, follow">\\n</head>');
+              html = html.replace(/<\/head>/i, '  <meta name="robots" content="noindex, follow">\n</head>');
             }
             fs.writeFileSync(file, html);
           }
@@ -224,9 +224,9 @@ jobs:
           }
           let robots = fs.readFileSync(robotsFile, 'utf8');
           robots = robots
-            .replace(/^[ \\t]*Disallow:[ \\t]*\\/search\\/[ \\t]*\\r?\\n?/gmi, '')
-            .replace(/^[ \\t]*Disallow:[ \\t]*\\/requests\\/[ \\t]*\\r?\\n?/gmi, '');
-          if (/^[ \\t]*Disallow:[ \\t]*\\/(?:search|requests)\\/[ \\t]*$/gmi.test(robots)) {
+            .replace(/^[ \t]*Disallow:[ \t]*\/search\/[ \t]*\r?\n?/gmi, '')
+            .replace(/^[ \t]*Disallow:[ \t]*\/requests\/[ \t]*\r?\n?/gmi, '');
+          if (/^[ \t]*Disallow:[ \t]*\/(?:search|requests)\/[ \t]*$/gmi.test(robots)) {
             throw new Error('Utility routes are still blocked in robots.txt.');
           }
           fs.writeFileSync(robotsFile, robots);
