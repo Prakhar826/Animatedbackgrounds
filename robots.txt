@@ -1,7 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /tools/
-Disallow: /search/
-Disallow: /requests/
 
 Sitemap: https://animatedbackgrounds.me/sitemap.xml
