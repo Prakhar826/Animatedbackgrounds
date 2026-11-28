@@ -185,6 +185,54 @@ jobs:
           test -f dist/site.webmanifest
           echo "Built static site with $(find dist -type f | wc -l) files."
 
+      - name: Set a crawlable noindex policy for utility pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/animatedbackgrounds-site"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+
+          const dist = path.resolve('dist');
+          for (const relative of ['search/index.html', 'requests/index.html']) {
+            const file = path.join(dist, relative);
+            if (!fs.existsSync(file)) {
+              throw new Error('Expected utility page is missing: ' + relative);
+            }
+
+            let html = fs.readFileSync(file, 'utf8');
+            const robotsMeta = /<meta\\b(?=[^>]*\\bname\\s*=\\s*["']robots["'])[^>]*>/i;
+            if (robotsMeta.test(html)) {
+              html = html.replace(robotsMeta, (tag) => {
+                const content = /\\bcontent\\s*=\\s*(["'])[^"']*\\1/i;
+                if (content.test(tag)) return tag.replace(content, 'content="noindex, follow"');
+                return tag.replace(/\\s*\\/?>(?=$)/, ' content="noindex, follow">');
+              });
+            } else {
+              if (!/<\\/head>/i.test(html)) {
+                throw new Error('Could not find </head> in ' + relative);
+              }
+              html = html.replace(/<\\/head>/i, '  <meta name="robots" content="noindex, follow">\\n</head>');
+            }
+            fs.writeFileSync(file, html);
+          }
+
+          const robotsFile = path.join(dist, 'robots.txt');
+          if (!fs.existsSync(robotsFile)) {
+            throw new Error('Generated robots.txt is missing.');
+          }
+          let robots = fs.readFileSync(robotsFile, 'utf8');
+          robots = robots
+            .replace(/^[ \\t]*Disallow:[ \\t]*\\/search\\/[ \\t]*\\r?\\n?/gmi, '')
+            .replace(/^[ \\t]*Disallow:[ \\t]*\\/requests\\/[ \\t]*\\r?\\n?/gmi, '');
+          if (/^[ \\t]*Disallow:[ \\t]*\\/(?:search|requests)\\/[ \\t]*$/gmi.test(robots)) {
+            throw new Error('Utility routes are still blocked in robots.txt.');
+          }
+          fs.writeFileSync(robotsFile, robots);
+          console.log('Set search and requests pages to noindex, follow and removed their robots.txt crawl blocks.');
+          NODE
+
       - name: Replace old published files with the fresh static build
         shell: bash
         run: |
